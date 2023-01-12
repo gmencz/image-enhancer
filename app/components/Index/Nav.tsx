@@ -4,15 +4,15 @@ import { Link } from "@remix-run/react";
 import { useState } from "react";
 
 const navigation = [
-  { name: "Pricing", href: "/#pricing" },
   { name: "Features", href: "/#features" },
+  { name: "Pricing", href: "/#pricing" },
 ];
 
 export function Nav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="px-6 pt-6 md:px-8">
+    <div className="px-6 pt-6 md:px-8 min-h-[60px]">
       <nav
         className="flex h-9 items-center justify-between mx-auto max-w-3xl"
         aria-label="Global"

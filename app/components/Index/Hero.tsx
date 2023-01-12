@@ -2,7 +2,10 @@ import { Link } from "@remix-run/react";
 
 export function Hero() {
   return (
-    <div className="relative px-6 md:px-8 min-h-screen">
+    <div
+      className="relative px-6 md:px-8"
+      style={{ minHeight: "calc(100vh - 60px)" }}
+    >
       <div className="mx-auto max-w-3xl pt-20 pb-32 sm:pt-48 sm:pb-40">
         <div>
           <div className="hidden sm:mb-8 sm:flex sm:justify-center">
@@ -26,15 +29,15 @@ export function Hero() {
               colorizing, denoising them and more.
             </p>
             <div className="mt-8 flex gap-x-4 sm:justify-center">
-              <a
-                href="/login"
+              <Link
+                to="/login"
                 className="inline-block rounded-lg bg-purple-600 px-4 py-1.5 text-base font-semibold leading-7 text-white shadow-sm ring-1 ring-purple-600 hover:bg-purple-700 hover:ring-purple-700"
               >
                 Get started for free{" "}
                 <span className="text-purple-200 ml-1" aria-hidden="true">
                   &rarr;
                 </span>
-              </a>
+              </Link>
             </div>
           </div>
           <div className="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]">

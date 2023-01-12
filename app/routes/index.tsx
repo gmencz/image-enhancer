@@ -1,4 +1,5 @@
 import { Features } from "~/components/Index/Features";
+import { Footer } from "~/components/Index/Footer";
 import { Gradient } from "~/components/Index/Gradient";
 import { Hero } from "~/components/Index/Hero";
 import { Nav } from "~/components/Index/Nav";
@@ -11,10 +12,9 @@ export default function Example() {
       <Nav />
       <main>
         <Hero />
-        <Pricing />
         <Features />
-
-        <footer>I am the footer</footer>
+        <Pricing />
+        <Footer />
       </main>
     </div>
   );
