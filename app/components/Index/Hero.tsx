@@ -1,6 +1,10 @@
 import { Link } from "@remix-run/react";
 
-export function Hero() {
+interface HeroProps {
+  isSignedIn: boolean;
+}
+
+export function Hero({ isSignedIn }: HeroProps) {
   return (
     <div
       className="relative px-6 md:px-8"
@@ -12,7 +16,10 @@ export function Hero() {
             <div className="relative overflow-hidden rounded-full py-1.5 px-4 text-sm leading-6 ring-1 ring-gray-900/10 hover:ring-gray-900/20">
               <span className="text-gray-600">
                 30% off during launch week -{" "}
-                <Link to="/login" className="font-semibold text-purple-600">
+                <Link
+                  to={isSignedIn ? "/app" : "/sign-in"}
+                  className="font-semibold text-purple-600"
+                >
                   <span className="absolute inset-0" aria-hidden="true" />
                   Try it now <span aria-hidden="true">&rarr;</span>
                 </Link>
@@ -30,7 +37,7 @@ export function Hero() {
             </p>
             <div className="mt-8 flex gap-x-4 sm:justify-center">
               <Link
-                to="/login"
+                to={isSignedIn ? "/app" : "/sign-in"}
                 className="inline-block rounded-lg bg-purple-600 px-4 py-1.5 text-base font-semibold leading-7 text-white shadow-sm ring-1 ring-purple-600 hover:bg-purple-700 hover:ring-purple-700"
               >
                 Get started for free{" "}

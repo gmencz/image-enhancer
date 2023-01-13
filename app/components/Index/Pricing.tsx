@@ -5,7 +5,8 @@ const tiers = [
   {
     id: "tier-free",
     name: "Free",
-    href: "/login",
+    signedInHref: "/app",
+    signedOutHref: "/sign-in",
     description:
       "Perfect for small projects and personal usage (no credit card required).",
     features: [
@@ -18,7 +19,8 @@ const tiers = [
   {
     id: "tier-pay-as-you-go",
     name: "Pay as you go",
-    href: "/login",
+    signedInHref: "/app",
+    signedOutHref: "/sign-in",
     description:
       "Perfect for any type of project, you will only pay for what you use, nothing more.",
     features: [
@@ -33,7 +35,11 @@ const tiers = [
   },
 ];
 
-export function Pricing() {
+interface PricingProps {
+  isSignedIn: boolean;
+}
+
+export function Pricing({ isSignedIn }: PricingProps) {
   return (
     <div className="bg-gray-900" id="pricing">
       <div className="relative overflow-hidden pt-32 pb-96 lg:pt-40">
@@ -99,7 +105,9 @@ export function Pricing() {
                       </ul>
                       <div className="mt-8">
                         <Link
-                          to={tier.href}
+                          to={
+                            isSignedIn ? tier.signedInHref : tier.signedOutHref
+                          }
                           className="inline-block w-full rounded-lg bg-purple-600 px-4 py-2.5 text-center text-sm font-semibold leading-5 text-white shadow-md hover:bg-purple-700"
                           aria-describedby={tier.id}
                         >

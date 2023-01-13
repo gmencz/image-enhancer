@@ -8,7 +8,11 @@ const navigation = [
   { name: "Pricing", href: "/#pricing" },
 ];
 
-export function Nav() {
+interface NavProps {
+  isSignedIn: boolean;
+}
+
+export function Nav({ isSignedIn }: NavProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -19,7 +23,7 @@ export function Nav() {
       >
         <div className="flex md:min-w-0 md:flex-1" aria-label="Global">
           <Link to="/" className="-m-1.5 p-1.5">
-            <span className="sr-only">Image Enhancer</span>
+            <span className="sr-only">Imxgic</span>
             <img className="h-8" src="/logo.svg" alt="" />
           </Link>
         </div>
@@ -46,10 +50,10 @@ export function Nav() {
         </div>
         <div className="hidden md:flex md:min-w-0 md:flex-1 md:justify-end">
           <Link
-            to="/login"
+            to={isSignedIn ? "/app" : "/sign-in"}
             className="inline-block rounded-lg px-3 py-1.5 text-sm font-semibold leading-6 text-gray-900 shadow-sm ring-1 ring-gray-900/10 hover:ring-gray-900/20"
           >
-            Log in
+            {isSignedIn ? "Open app" : "Sign in"}
           </Link>
         </div>
       </nav>
@@ -58,7 +62,7 @@ export function Nav() {
           <div className="flex h-9 items-center justify-between">
             <div className="flex">
               <Link to="/" className="-m-1.5 p-1.5">
-                <span className="sr-only">Image Enhancer</span>
+                <span className="sr-only">Imxgic</span>
                 <img className="h-8" src="/logo.svg" alt="" />
               </Link>
             </div>
@@ -88,10 +92,10 @@ export function Nav() {
               </div>
               <div className="py-6">
                 <Link
-                  to="/login"
+                  to={isSignedIn ? "/app" : "/sign-in"}
                   className="-mx-3 block rounded-lg py-2.5 px-3 text-base font-semibold leading-6 text-gray-900 hover:bg-gray-400/10"
                 >
-                  Log in
+                  Sign in
                 </Link>
               </div>
             </div>

@@ -28,9 +28,13 @@ export const featuresImages = [
   },
 ];
 
-export function Features() {
+interface FeaturesProps {
+  isSignedIn: boolean;
+}
+
+export function Features({ isSignedIn }: FeaturesProps) {
   return (
-    <div className="relative bg-gray-50 pt-24 sm:pt-32 lg:pt-40" id="features">
+    <div className="relative pt-24 sm:pt-32 lg:pt-40" id="features">
       <div className="mx-auto max-w-md px-6 text-center sm:max-w-3xl lg:max-w-7xl lg:px-8">
         <div>
           <h2 className="text-lg font-semibold text-purple-600">Features</h2>
@@ -85,7 +89,7 @@ export function Features() {
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
               <Link
-                to="/login"
+                to={isSignedIn ? "/app" : "/sign-in"}
                 className="inline-flex items-center justify-center rounded-md border border-transparent bg-purple-600 px-5 py-3 text-base font-medium text-white hover:bg-purple-700"
               >
                 Get started for free

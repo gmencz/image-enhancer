@@ -7,6 +7,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+import { Toaster } from "react-hot-toast";
 import styles from "./styles/app.css";
 
 export function links() {
@@ -15,22 +16,23 @@ export function links() {
 
 export const meta: MetaFunction = () => ({
   charset: "utf-8",
-  title: "Image Enhancer",
+  title: "Imxgic",
   viewport: "width=device-width,initial-scale=1",
 });
 
 export default function App() {
   return (
-    <html lang="en">
+    <html className="h-full bg-gray-50" lang="en">
       <head>
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="h-full">
         <Outlet />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />
+        <Toaster position="top-right" />
       </body>
     </html>
   );
