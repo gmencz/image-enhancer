@@ -13,7 +13,7 @@ const mailerSend = new MailerSend({
   apiKey: MAILERSEND_API_KEY,
 });
 
-const sentFrom = new Sender("yo@gabrielmendezc.com", "Image Enhancing Team");
+const sentFrom = new Sender("yo@gabrielmendezc.com", "Imxgic");
 
 export async function sendSignInEmail(userId: number, email: string) {
   const { SIGN_IN_EMAIL_TOKEN_SECRET } = process.env;
@@ -26,7 +26,7 @@ export async function sendSignInEmail(userId: number, email: string) {
     jwt.sign(
       { userId },
       SIGN_IN_EMAIL_TOKEN_SECRET,
-      { expiresIn: "20m" },
+      { expiresIn: "10m" },
       (error, encoded) => {
         if (error) {
           return rej(error);
@@ -67,9 +67,7 @@ export async function sendSignInEmail(userId: number, email: string) {
     .setTemplateId("pq3enl6x7v8l2vwr")
     .setVariables(variables);
 
-  const { body, statusCode } = await mailerSend.email.send(emailParams);
-  console.log(JSON.stringify({ responseBody: body }, null, 4));
-
+  const { statusCode } = await mailerSend.email.send(emailParams);
   if (statusCode > 400) {
     throw new Error(
       `MailerSend failed to send email with status code ${statusCode}`

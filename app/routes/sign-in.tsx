@@ -6,6 +6,7 @@ import { Nav } from "~/components/Nav";
 import { SignInForm } from "~/components/SignIn/Form";
 import { sendSignInEmail } from "~/lib/mail.server";
 import { prisma } from "~/lib/prisma.server";
+import { isOverLimit } from "~/lib/rate-limiting.server";
 import { actionWithFormResponse } from "~/lib/responses.server";
 import { getUserId } from "~/lib/session.server";
 
@@ -35,6 +36,20 @@ export async function action({ request }: ActionArgs) {
       fieldValues,
       fieldErrors: validation.error.formErrors.fieldErrors,
       statusCode: 400,
+    });
+  }
+
+  // 5 requests within 5 minutes max.
+  const overLimit = await isOverLimit(request, {
+    max: 5,
+    windowInSeconds: 5 * 60,
+  });
+
+  if (overLimit) {
+    return actionWithFormResponse({
+      fieldValues,
+      formError: "Slow down, you're making too many requests!",
+      statusCode: 429,
     });
   }
 
