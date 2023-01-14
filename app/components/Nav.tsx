@@ -50,7 +50,7 @@ export function Nav({ isSignedIn }: NavProps) {
         </div>
         <div className="hidden md:flex md:min-w-0 md:flex-1 md:justify-end">
           <Link
-            to={isSignedIn ? "/app" : "/sign-in"}
+            to={isSignedIn ? "/app/" : "/sign-in"}
             className="inline-block rounded-lg px-3 py-1.5 text-sm font-semibold leading-6 text-gray-900 shadow-sm ring-1 ring-gray-900/10 hover:ring-gray-900/20"
           >
             {isSignedIn ? "Open app" : "Sign in"}
@@ -92,7 +92,7 @@ export function Nav({ isSignedIn }: NavProps) {
               </div>
               <div className="py-6">
                 <Link
-                  to={isSignedIn ? "/app" : "/sign-in"}
+                  to={isSignedIn ? "/app/" : "/sign-in"}
                   className="-mx-3 block rounded-lg py-2.5 px-3 text-base font-semibold leading-6 text-gray-900 hover:bg-gray-400/10"
                 >
                   Sign in

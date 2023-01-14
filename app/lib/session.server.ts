@@ -1,5 +1,7 @@
+import { User } from "@prisma/client";
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import invariant from "tiny-invariant";
+import { prisma } from "./prisma.server";
 
 const { SESSION_SECRET } = process.env;
 invariant(typeof SESSION_SECRET === "string", "SESSION_SECRET env var not set");
@@ -28,6 +30,23 @@ export async function getUserId(request: Request) {
   return userId;
 }
 
+export async function requireUser(request: Request) {
+  const userId = await requireUserId(request);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+    },
+  });
+
+  if (!user) {
+    throw redirect("/sign-out");
+  }
+
+  return user;
+}
+
 export async function requireUserId(
   request: Request,
   redirectTo: string = new URL(request.url).pathname
@@ -47,6 +66,15 @@ export async function createUserSession(userId: number, redirectTo: string) {
   return redirect(redirectTo, {
     headers: {
       "Set-Cookie": await commitSession(session),
+    },
+  });
+}
+
+export async function signOut(request: Request) {
+  const session = await getUserSession(request);
+  return redirect("/sign-in", {
+    headers: {
+      "Set-Cookie": await destroySession(session),
     },
   });
 }

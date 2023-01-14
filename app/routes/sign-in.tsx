@@ -20,7 +20,7 @@ const schema = z.object({
 export async function loader({ request }: LoaderArgs) {
   const userId = await getUserId(request);
   if (userId) {
-    return redirect("/app");
+    return redirect("/app/");
   }
 
   return null;

@@ -12,7 +12,7 @@ export async function loader({ request }: LoaderArgs) {
 
   try {
     const { userId } = await parseTokenFromEmail(token);
-    return await createUserSession(userId, "/app");
+    return await createUserSession(userId, "/app/");
   } catch (error) {
     console.error(error);
     return redirect("/sign-in");

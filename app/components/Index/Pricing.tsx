@@ -5,7 +5,7 @@ const tiers = [
   {
     id: "tier-free",
     name: "Free",
-    signedInHref: "/app",
+    signedInHref: "/app/",
     signedOutHref: "/sign-in",
     description:
       "Perfect for small projects and personal usage (no credit card required).",
@@ -19,7 +19,7 @@ const tiers = [
   {
     id: "tier-pay-as-you-go",
     name: "Pay as you go",
-    signedInHref: "/app",
+    signedInHref: "/app/",
     signedOutHref: "/sign-in",
     description:
       "Perfect for any type of project, you will only pay for what you use, nothing more.",
