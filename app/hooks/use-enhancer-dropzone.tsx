@@ -19,18 +19,26 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
     onDrop: (acceptedFiles) => {
       let uploadedDuplicates = false;
       let limitReached = false;
+      let tooBig = false;
       acceptedFiles.forEach((file) => {
+        // Max 2MB per file
+        const mb = file.size / 1000000;
+        if (mb > 2) {
+          tooBig = true;
+          return;
+        }
+
+        if (uploadedPhotos.length >= limit) {
+          limitReached = true;
+          return;
+        }
+
         const alreadyUploaded = uploadedPhotos.some(
           (uploadedPhoto) => uploadedPhoto.file.name === file.name
         );
 
         if (alreadyUploaded) {
           uploadedDuplicates = true;
-          return;
-        }
-
-        if (uploadedPhotos.length >= limit) {
-          limitReached = true;
           return;
         }
 
@@ -51,7 +59,7 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
           <ErrorToast
             t={t}
             title="Oops!"
-            description="You tried to upload some images that were already uploaded."
+            description="You tried to upload some photos that were already uploaded."
           />
         ));
       }
@@ -61,7 +69,17 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
           <ErrorToast
             t={t}
             title="Oops!"
-            description={`You can't upload more photos per enhancement on your current plan.`}
+            description={`You've reached the limit of photos you can upload.`}
+          />
+        ));
+      }
+
+      if (tooBig) {
+        toast.custom((t) => (
+          <ErrorToast
+            t={t}
+            title="Oops!"
+            description={`Some photos weren't uploaded because they exceeded the 2MB size limit.`}
           />
         ));
       }

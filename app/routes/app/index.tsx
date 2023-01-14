@@ -1,20 +1,15 @@
-import type { User } from "@prisma/client";
-import type { LoaderArgs } from "@remix-run/node";
+import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { Fragment } from "react";
 import { prisma } from "~/lib/prisma.server";
-import { useMatchesData } from "~/utils";
 import { useEnhancerDropzone } from "~/hooks/use-enhancer-dropzone";
 import { AppIndexHeader } from "~/components/AppIndex/Header";
 import { AppIndexUploadedPhotosList } from "~/components/AppIndex/UploadedPhotosList";
 import { AppIndexDropzone } from "~/components/AppIndex/Dropzone";
 import { AppIndexEnhanceForm } from "~/components/AppIndex/EnhanceForm";
-import { requireUser, requireUserId } from "~/lib/session.server";
-
-interface LayoutData {
-  user: User;
-}
+import { requireUser } from "~/lib/session.server";
+import { z } from "zod";
 
 export async function loader({ request }: LoaderArgs) {
   const user = await requireUser(request);
@@ -47,10 +42,50 @@ export async function loader({ request }: LoaderArgs) {
   return json({ remainingEnhancements });
 }
 
+const effects = [
+  "Deblur",
+  "Denoise",
+  "Derain",
+  "Dehaze",
+  "Lighten",
+  "Retouch",
+  "Watermark removal",
+  "Colorize",
+  "Face restoration",
+];
+
+const schema = z.object({
+  effect: z.enum(effects as any),
+  photos: z.array(z.instanceof(File)),
+});
+
+export async function action({ request }: ActionArgs) {
+  const body = await request.formData();
+  const validation = await schema.safeParseAsync({
+    effect: body.get("effect"),
+    photos: body.getAll("photo"),
+  });
+
+  if (!validation.success) {
+    return json({ error: "Invalid data" }, { status: 400 });
+  }
+
+  const { effect, photos } = validation.data;
+
+  // TODO
+
+  return null;
+}
+
 export default function AppIndex() {
-  const { user } = useMatchesData<LayoutData>("routes/app");
   const { remainingEnhancements } = useLoaderData<typeof loader>();
-  const limit = 1;
+
+  const limit = remainingEnhancements
+    ? remainingEnhancements > 20
+      ? 20
+      : remainingEnhancements
+    : 20;
+
   const {
     getRootProps,
     getInputProps,
@@ -59,20 +94,21 @@ export default function AppIndex() {
     setUploadedPhotos,
   } = useEnhancerDropzone({ limit });
 
-  console.log({ remainingEnhancements });
-
   return (
     <>
       <AppIndexHeader remainingEnhancements={remainingEnhancements} />
       <main>
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 my-14">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 my-14">
           <AppIndexDropzone
             getInputProps={getInputProps}
             getRootProps={getRootProps}
             isDragActive={isDragActive}
           />
 
-          <AppIndexEnhanceForm />
+          <AppIndexEnhanceForm
+            effects={effects}
+            uploadedPhotos={uploadedPhotos}
+          />
 
           <AppIndexUploadedPhotosList
             setUploadedPhotos={setUploadedPhotos}
