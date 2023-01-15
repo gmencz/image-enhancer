@@ -33,7 +33,7 @@ export function AppIndexDropzone({
           className="hidden"
           name="photos"
           id="photos"
-          accept="image/png, image/jpeg"
+          accept="image/png, image/jpeg, image/webp"
           {...getInputProps({ disabled })}
         />
       </label>

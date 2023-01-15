@@ -101,6 +101,7 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
     accept: {
       "image/png": [".png"],
       "image/jpeg": [".jpeg"],
+      "image/webp": [".webp"],
     },
   });
 
