@@ -26,10 +26,24 @@ model User {
   @@map("users")
 }
 
+model PhotoEnhancementResult {
+  id    Int    @id @default(autoincrement())
+  model String
+  url   String
+
+  photoEnhancement   PhotoEnhancement? @relation(fields: [photoEnhancementId], references: [id])
+  photoEnhancementId Int?              @map("photo_enhancement_id")
+
+  @@map("photo_enhancement_results")
+}
+
 model PhotoEnhancement {
-  id     Int  @id @default(autoincrement())
-  user   User @relation(fields: [userId], references: [id])
-  userId Int  @map("user_id")
+  id               Int                      @id @default(autoincrement())
+  user             User                     @relation(fields: [userId], references: [id])
+  userId           Int                      @map("user_id")
+  effect           String
+  originalPhotoUrl String
+  results          PhotoEnhancementResult[]
 
   @@map("photo_enhancements")
 }

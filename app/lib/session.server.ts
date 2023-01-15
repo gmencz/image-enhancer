@@ -1,4 +1,3 @@
-import { User } from "@prisma/client";
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import invariant from "tiny-invariant";
 import { prisma } from "./prisma.server";

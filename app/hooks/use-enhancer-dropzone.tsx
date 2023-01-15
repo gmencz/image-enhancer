@@ -5,7 +5,8 @@ import { ErrorToast } from "~/components/ErrorToast";
 
 export interface UploadedPhoto {
   dataURL: string;
-  file: File;
+  name: string;
+  sizeInMb: number;
 }
 
 interface UseEnhancerDropzone {
@@ -16,14 +17,15 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
 
   const dropzoneState = useDropzone({
+    disabled: limit === 0,
     onDrop: (acceptedFiles) => {
       let uploadedDuplicates = false;
       let limitReached = false;
       let tooBig = false;
       acceptedFiles.forEach((file) => {
         // Max 2MB per file
-        const mb = file.size / 1000000;
-        if (mb > 2) {
+        const sizeInMb = file.size / 1000000;
+        if (sizeInMb > 2) {
           tooBig = true;
           return;
         }
@@ -34,7 +36,7 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
         }
 
         const alreadyUploaded = uploadedPhotos.some(
-          (uploadedPhoto) => uploadedPhoto.file.name === file.name
+          (uploadedPhoto) => uploadedPhoto.name === file.name
         );
 
         if (alreadyUploaded) {
@@ -48,7 +50,10 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
         reader.onerror = () => console.log("file reading has failed");
         reader.onload = () => {
           const dataURL = reader.result as string;
-          setUploadedPhotos((prev) => [...prev, { dataURL, file }]);
+          setUploadedPhotos((prev) => [
+            ...prev,
+            { dataURL, name: file.name, sizeInMb },
+          ]);
         };
 
         reader.readAsDataURL(file);

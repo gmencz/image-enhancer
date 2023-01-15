@@ -8,9 +8,16 @@ interface SelectProps {
   label: string;
   selected: string;
   setSelected: React.Dispatch<React.SetStateAction<string>>;
+  description?: string;
 }
 
-export function Select({ options, label, selected, setSelected }: SelectProps) {
+export function Select({
+  options,
+  label,
+  selected,
+  setSelected,
+  description,
+}: SelectProps) {
   return (
     <>
       <Listbox value={selected} onChange={setSelected}>
@@ -80,6 +87,12 @@ export function Select({ options, label, selected, setSelected }: SelectProps) {
                 </Listbox.Options>
               </Transition>
             </div>
+
+            {description ? (
+              <p className="mt-2 text-sm text-gray-500" id="email-description">
+                {description}
+              </p>
+            ) : null}
           </>
         )}
       </Listbox>

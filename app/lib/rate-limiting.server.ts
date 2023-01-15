@@ -5,14 +5,18 @@ interface RateLimiterConfig {
   windowInSeconds: number;
 }
 
-export async function isOverLimit(request: Request, config: RateLimiterConfig) {
+export async function isOverLimit(
+  request: Request,
+  config: RateLimiterConfig,
+  userId?: number
+) {
   const url = new URL(request.url);
-  const ipAddress =
-    process.env.NODE_ENV === "production"
+  const id =
+    userId || process.env.NODE_ENV === "production"
       ? request.headers.get("Fly-Client-IP")
       : "127.0.0.1";
 
-  const key = `rate-limiter:${url.pathname}:${ipAddress}`;
+  const key = `rate-limiter:${url.pathname}:${id}`;
   let res: number;
   try {
     res = await redis.incr(key);
@@ -24,8 +28,6 @@ export async function isOverLimit(request: Request, config: RateLimiterConfig) {
   if (res > config.max) {
     return true;
   }
-
-  console.log({ res });
 
   if (res === 1) {
     redis.expire(key, config.windowInSeconds);

@@ -11,26 +11,14 @@ export function AppIndexUploadedPhotosList({
   setUploadedPhotos,
 }: AppIndexUploadedPhotosListProps) {
   const removePhoto = (photo: UploadedPhoto) => {
-    setUploadedPhotos((prev) =>
-      prev.filter(({ file }) => file.name !== photo.file.name)
-    );
+    setUploadedPhotos((prev) => prev.filter(({ name }) => name !== photo.name));
   };
 
   return (
     <div className="mt-12">
-      <p className="text-center mb-2 text-xl font-bold tracking-tight sm:text-center sm:text-2xl text-gray-900">
-        {uploadedPhotos.length > 0
-          ? `You uploaded ${
-              uploadedPhotos.length === 1
-                ? "1 photo"
-                : `${uploadedPhotos.length} photos`
-            }`
-          : "You haven't uploaded any photos yet"}
-      </p>
-
       <ul className="flex flex-wrap justify-center items-center gap-8 mt-4">
         {uploadedPhotos.map((uploadedPhoto) => (
-          <li key={uploadedPhoto.file.name} className="relative">
+          <li key={uploadedPhoto.name} className="relative">
             <img
               className="max-w-sm rounded shadow-lg w-full"
               src={uploadedPhoto.dataURL}

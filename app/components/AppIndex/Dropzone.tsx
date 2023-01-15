@@ -4,18 +4,22 @@ import type { DropzoneState } from "react-dropzone";
 type AppIndexDropzoneProps = Pick<
   DropzoneState,
   "isDragActive" | "getRootProps" | "getInputProps"
->;
+> & {
+  disabled: boolean;
+};
 
 export function AppIndexDropzone({
   getInputProps,
   getRootProps,
   isDragActive,
+  disabled,
 }: AppIndexDropzoneProps) {
   return (
     <div
       className={clsx(
         "w-full rounded-lg border-4 border-dashed border-gray-200 items-center justify-center py-14 flex flex-col",
-        isDragActive && "border-gray-900"
+        isDragActive && "border-gray-900",
+        disabled && "blur-sm pointer-events-none"
       )}
       {...getRootProps()}
     >
@@ -30,7 +34,7 @@ export function AppIndexDropzone({
           name="photos"
           id="photos"
           accept="image/png, image/jpeg"
-          {...getInputProps()}
+          {...getInputProps({ disabled })}
         />
       </label>
       <p className="mt-6 text-base text-gray-500 text-center">

@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const plans = await prisma.plan.createMany({
-    data: [{ name: "Free", enhancementsLimit: 50 }, { name: "Pay as you go" }],
+    data: [{ name: "Free", enhancementsLimit: 5 }, { name: "Pay as you go" }],
   });
 
   const gabriel = await prisma.user.upsert({

@@ -8,8 +8,10 @@ import { AppIndexHeader } from "~/components/AppIndex/Header";
 import { AppIndexUploadedPhotosList } from "~/components/AppIndex/UploadedPhotosList";
 import { AppIndexDropzone } from "~/components/AppIndex/Dropzone";
 import { AppIndexEnhanceForm } from "~/components/AppIndex/EnhanceForm";
-import { requireUser } from "~/lib/session.server";
+import { requireUser, requireUserId } from "~/lib/session.server";
 import { z } from "zod";
+import { isOverLimit } from "~/lib/rate-limiting.server";
+import { Effect, enhancePhotos } from "~/lib/enhancer.server";
 
 export async function loader({ request }: LoaderArgs) {
   const user = await requireUser(request);
@@ -39,52 +41,83 @@ export async function loader({ request }: LoaderArgs) {
     }
   }
 
-  return json({ remainingEnhancements });
+  const maxLimit = 5;
+  const limit = remainingEnhancements
+    ? remainingEnhancements > maxLimit
+      ? maxLimit
+      : remainingEnhancements
+    : maxLimit;
+
+  return json({
+    limit,
+    effects: Object.values(Effect),
+    hasEnhancementsLimit: !!plan.enhancementsLimit,
+  });
 }
 
-const effects = [
-  "Deblur",
-  "Denoise",
-  "Derain",
-  "Dehaze",
-  "Lighten",
-  "Retouch",
-  "Watermark removal",
-  "Colorize",
-  "Face restoration",
-];
-
 const schema = z.object({
-  effect: z.enum(effects as any),
-  photos: z.array(z.instanceof(File)),
+  effect: z.nativeEnum(Effect),
+  photos: z
+    .array(
+      z.object({
+        dataURL: z.string(),
+        name: z.string(),
+        sizeInMb: z.number().max(2),
+      })
+    )
+    .max(5),
 });
 
 export async function action({ request }: ActionArgs) {
+  const userId = await requireUserId(request);
   const body = await request.formData();
   const validation = await schema.safeParseAsync({
     effect: body.get("effect"),
-    photos: body.getAll("photo"),
+    photos: body.getAll("photo").map((photo) => JSON.parse(photo.toString())),
   });
 
   if (!validation.success) {
     return json({ error: "Invalid data" }, { status: 400 });
   }
 
-  const { effect, photos } = validation.data;
+  // 3 requests within 1 minute max.
+  const overLimit = await isOverLimit(
+    request,
+    {
+      max: 3,
+      windowInSeconds: 60,
+    },
+    userId
+  );
 
-  // TODO
+  if (overLimit) {
+    return json(
+      { error: "Wait a minute, you're making too many requests!" },
+      { status: 429 }
+    );
+  }
+
+  const enhancedPhotos = await enhancePhotos(
+    validation.data.effect,
+    validation.data.photos
+  );
+
+  // TODO: Upload to R2
+
+  // enhancedPhotos[0].originalPhoto
+
+  // await prisma.photoEnhancement.createMany({
+  //   data: enhancedPhotos.map((_photo) => ({
+  //     userId,
+  //   })),
+  // });
 
   return null;
 }
 
 export default function AppIndex() {
-  const { remainingEnhancements } = useLoaderData<typeof loader>();
-
-  const limit = remainingEnhancements
-    ? remainingEnhancements > 20
-      ? 20
-      : remainingEnhancements
-    : 20;
+  const { limit, effects, hasEnhancementsLimit } =
+    useLoaderData<typeof loader>();
 
   const {
     getRootProps,
@@ -94,20 +127,27 @@ export default function AppIndex() {
     setUploadedPhotos,
   } = useEnhancerDropzone({ limit });
 
+  const disabled = limit === 0;
+
   return (
     <>
-      <AppIndexHeader remainingEnhancements={remainingEnhancements} />
+      <AppIndexHeader
+        limit={limit}
+        hasEnhancementsLimit={hasEnhancementsLimit}
+      />
       <main>
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 my-14">
           <AppIndexDropzone
             getInputProps={getInputProps}
             getRootProps={getRootProps}
             isDragActive={isDragActive}
+            disabled={disabled}
           />
 
           <AppIndexEnhanceForm
             effects={effects}
             uploadedPhotos={uploadedPhotos}
+            disabled={disabled}
           />
 
           <AppIndexUploadedPhotosList
