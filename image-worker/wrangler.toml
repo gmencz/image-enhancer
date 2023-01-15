@@ -1,0 +1,16 @@
+name = "imxgic-image-worker"
+main = "dist/index.mjs"
+compatibility_date = "2022-05-28"
+compatibility_flags = []
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "imxgic"
+
+[build]
+command = "node build.js"
+
+[miniflare]
+kv_persist = true
+cache_persist = true
+durable_objects_persist = true
