@@ -1,3 +1,3 @@
-export default function AppImages() {
+export default function Images() {
   return null;
 }

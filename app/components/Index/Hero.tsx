@@ -28,10 +28,10 @@ export function Hero({ isSignedIn }: HeroProps) {
           </div>
           <div>
             <h1 className="text-4xl font-bold tracking-tight sm:text-center sm:text-6xl">
-              Enhance your photos.
+              Enhance your images.
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600 sm:text-center">
-              Have any low quality photos? With our AI you can do just about
+              Have any low quality images? With our AI you can do just about
               anything with them, from improving their quality to deblurring,
               colorizing, denoising them and more.
             </p>

@@ -24,15 +24,15 @@ export function AppIndexDropzone({
       {...getRootProps()}
     >
       <label
-        htmlFor="photos"
+        htmlFor="images"
         className="inline-flex items-center rounded-md border border-transparent bg-purple-100 px-6 py-3 text-lg font-medium text-purple-700 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
       >
-        Upload photos
+        Upload images
         <input
           type="file"
           className="hidden"
-          name="photos"
-          id="photos"
+          name="images"
+          id="images"
           accept="image/png, image/jpeg, image/webp"
           {...getInputProps({ disabled })}
         />

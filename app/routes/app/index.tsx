@@ -1,17 +1,20 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
+import { redirect } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { Fragment } from "react";
 import { prisma } from "~/lib/prisma.server";
 import { useEnhancerDropzone } from "~/hooks/use-enhancer-dropzone";
 import { AppIndexHeader } from "~/components/AppIndex/Header";
-import { AppIndexUploadedPhotosList } from "~/components/AppIndex/UploadedPhotosList";
+import { AppIndexUploadedImagesList } from "~/components/AppIndex/UploadedImagesList";
 import { AppIndexDropzone } from "~/components/AppIndex/Dropzone";
 import { AppIndexEnhanceForm } from "~/components/AppIndex/EnhanceForm";
 import { requireUser, requireUserId } from "~/lib/session.server";
 import { z } from "zod";
 import { isOverLimit } from "~/lib/rate-limiting.server";
-import { Effect, enhancePhotos } from "~/lib/enhancer.server";
+import { Effect, enhanceImages } from "~/lib/enhancer.server";
+import { uploadImage } from "~/lib/image-worker.server";
+import { blobToDataUrl } from "~/lib/files";
 
 export async function loader({ request }: LoaderArgs) {
   const user = await requireUser(request);
@@ -26,7 +29,7 @@ export async function loader({ request }: LoaderArgs) {
     throw new Error("This shouldn't happen");
   }
 
-  const enhancementsCount = await prisma.photoEnhancement.count({
+  const enhancementsCount = await prisma.imageEnhancement.count({
     where: {
       userId: user.id,
     },
@@ -57,10 +60,10 @@ export async function loader({ request }: LoaderArgs) {
 
 const schema = z.object({
   effect: z.nativeEnum(Effect),
-  photos: z
+  images: z
     .array(
       z.object({
-        dataURL: z.string(),
+        dataUrl: z.string(),
         name: z.string(),
         sizeInMb: z.number().max(2),
       })
@@ -73,7 +76,7 @@ export async function action({ request }: ActionArgs) {
   const body = await request.formData();
   const validation = await schema.safeParseAsync({
     effect: body.get("effect"),
-    photos: body.getAll("photo").map((photo) => JSON.parse(photo.toString())),
+    images: body.getAll("image").map((image) => JSON.parse(image.toString())),
   });
 
   if (!validation.success) {
@@ -97,22 +100,58 @@ export async function action({ request }: ActionArgs) {
     );
   }
 
-  const enhancedPhotos = await enhancePhotos(
+  const enhancedImages = await enhanceImages(
     validation.data.effect,
-    validation.data.photos
+    validation.data.images
   );
 
-  // TODO: Upload to R2
+  const uploadedImages = await Promise.all(
+    enhancedImages.map(async (enhancedImage) => {
+      const originalImageUrl = await uploadImage(
+        enhancedImage.originalImage.dataUrl
+      );
 
-  // enhancedPhotos[0].originalPhoto
+      const uploadedEnhancedImages = await Promise.all(
+        enhancedImage.results.map(async (result) => {
+          const blob = await fetch(result.url).then((r) => r.blob());
+          const dataUrl = await blobToDataUrl(blob);
+          const imageUrl = await uploadImage(dataUrl);
+          return { ...result, url: imageUrl };
+        })
+      );
 
-  // await prisma.photoEnhancement.createMany({
-  //   data: enhancedPhotos.map((_photo) => ({
-  //     userId,
-  //   })),
-  // });
+      return {
+        originalImage: {
+          name: enhancedImage.originalImage.name,
+          url: originalImageUrl,
+        },
+        results: uploadedEnhancedImages,
+      };
+    })
+  );
 
-  return null;
+  await Promise.all(
+    uploadedImages.map(async ({ originalImage, results }) => {
+      return prisma.imageEnhancement.create({
+        data: {
+          userId,
+          effect: validation.data.effect,
+          originalImageName: originalImage.name,
+          originalImageUrl: originalImage.url,
+          results: {
+            createMany: {
+              data: results.map((result) => ({
+                url: result.url,
+                model: result.model,
+              })),
+            },
+          },
+        },
+      });
+    })
+  );
+
+  return redirect("/app/images");
 }
 
 export default function AppIndex() {
@@ -123,8 +162,8 @@ export default function AppIndex() {
     getRootProps,
     getInputProps,
     isDragActive,
-    uploadedPhotos,
-    setUploadedPhotos,
+    uploadedImages,
+    setUploadedImages,
   } = useEnhancerDropzone({ limit });
 
   const disabled = limit === 0;
@@ -146,13 +185,13 @@ export default function AppIndex() {
 
           <AppIndexEnhanceForm
             effects={effects}
-            uploadedPhotos={uploadedPhotos}
+            uploadedImages={uploadedImages}
             disabled={disabled}
           />
 
-          <AppIndexUploadedPhotosList
-            setUploadedPhotos={setUploadedPhotos}
-            uploadedPhotos={uploadedPhotos}
+          <AppIndexUploadedImagesList
+            setUploadedImages={setUploadedImages}
+            uploadedImages={uploadedImages}
           />
         </div>
       </main>

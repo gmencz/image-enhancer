@@ -14,7 +14,7 @@ export async function loader({ request }: LoaderArgs) {
 
 const navigation = [
   { name: "Enhancer", href: "/app/" },
-  { name: "Photos", href: "/app/photos" },
+  { name: "Images", href: "/app/images" },
 ];
 
 const userNavigation = [

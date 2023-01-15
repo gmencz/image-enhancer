@@ -1,19 +1,19 @@
 import { Form, useTransition } from "@remix-run/react";
 import { BoltIcon } from "@heroicons/react/24/solid";
 import { Select } from "../Select";
-import type { UploadedPhoto } from "~/hooks/use-enhancer-dropzone";
+import type { UploadedImage } from "~/hooks/use-enhancer-dropzone";
 import { useState } from "react";
 import clsx from "clsx";
 import { Spinner } from "../Spinner";
 
 interface AppIndexEnhanceFormProps {
-  uploadedPhotos: UploadedPhoto[];
+  uploadedImages: UploadedImage[];
   effects: string[];
   disabled: boolean;
 }
 
 export function AppIndexEnhanceForm({
-  uploadedPhotos,
+  uploadedImages,
   effects,
   disabled,
 }: AppIndexEnhanceFormProps) {
@@ -38,7 +38,7 @@ export function AppIndexEnhanceForm({
 
       <button
         type="submit"
-        disabled={uploadedPhotos.length === 0 || isSubmitting || disabled}
+        disabled={uploadedImages.length === 0 || isSubmitting || disabled}
         className="mt-4 inline-flex items-center rounded-md border border-transparent bg-purple-600 disabled:bg-purple-300 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
       >
         {isSubmitting ? (
@@ -62,12 +62,12 @@ export function AppIndexEnhanceForm({
 
       <input type="hidden" name="effect" value={effect} />
 
-      {uploadedPhotos.map((photo) => (
+      {uploadedImages.map((image) => (
         <input
-          key={photo.name}
+          key={image.name}
           type="hidden"
-          name="photo"
-          value={JSON.stringify(photo)}
+          name="image"
+          value={JSON.stringify(image)}
         />
       ))}
     </Form>

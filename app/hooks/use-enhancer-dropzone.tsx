@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "react-hot-toast";
 import { ErrorToast } from "~/components/ErrorToast";
+import { blobToDataUrl } from "~/lib/files";
 
-export interface UploadedPhoto {
-  dataURL: string;
+export interface UploadedImage {
+  dataUrl: string;
   name: string;
   sizeInMb: number;
 }
@@ -14,79 +15,59 @@ interface UseEnhancerDropzone {
 }
 
 export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
-  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
 
   const dropzoneState = useDropzone({
     disabled: limit === 0,
-    onDrop: (acceptedFiles) => {
-      let uploadedDuplicates = false;
-      let limitReached = false;
-      let tooBig = false;
-      acceptedFiles.forEach((file) => {
+    onDrop: async (acceptedFiles) => {
+      for (const file of acceptedFiles) {
         // Max 2MB per file
         const sizeInMb = file.size / 1000000;
         if (sizeInMb > 2) {
-          tooBig = true;
-          return;
+          toast.custom((t) => (
+            <ErrorToast
+              t={t}
+              title="Oops!"
+              description={`Some images weren't uploaded because they exceeded the 2MB size limit.`}
+            />
+          ));
+
+          break;
         }
 
-        if (uploadedPhotos.length >= limit) {
-          limitReached = true;
-          return;
+        if (uploadedImages.length >= limit) {
+          toast.custom((t) => (
+            <ErrorToast
+              t={t}
+              title="Oops!"
+              description={`You've reached the limit of images you can upload.`}
+            />
+          ));
+
+          break;
         }
 
-        const alreadyUploaded = uploadedPhotos.some(
-          (uploadedPhoto) => uploadedPhoto.name === file.name
+        const alreadyUploaded = uploadedImages.some(
+          (uploadedImage) => uploadedImage.name === file.name
         );
 
         if (alreadyUploaded) {
-          uploadedDuplicates = true;
-          return;
+          toast.custom((t) => (
+            <ErrorToast
+              t={t}
+              title="Oops!"
+              description="You tried to upload some images that were already uploaded."
+            />
+          ));
+
+          break;
         }
 
-        const reader = new FileReader();
-
-        reader.onabort = () => console.log("file reading was aborted");
-        reader.onerror = () => console.log("file reading has failed");
-        reader.onload = () => {
-          const dataURL = reader.result as string;
-          setUploadedPhotos((prev) => [
-            ...prev,
-            { dataURL, name: file.name, sizeInMb },
-          ]);
-        };
-
-        reader.readAsDataURL(file);
-      });
-
-      if (uploadedDuplicates) {
-        toast.custom((t) => (
-          <ErrorToast
-            t={t}
-            title="Oops!"
-            description="You tried to upload some photos that were already uploaded."
-          />
-        ));
-      }
-
-      if (limitReached) {
-        toast.custom((t) => (
-          <ErrorToast
-            t={t}
-            title="Oops!"
-            description={`You've reached the limit of photos you can upload.`}
-          />
-        ));
-      }
-
-      if (tooBig) {
-        toast.custom((t) => (
-          <ErrorToast
-            t={t}
-            title="Oops!"
-            description={`Some photos weren't uploaded because they exceeded the 2MB size limit.`}
-          />
-        ));
+        const dataUrl = await blobToDataUrl(file);
+        setUploadedImages((prev) => [
+          ...prev,
+          { dataUrl, name: file.name, sizeInMb },
+        ]);
       }
     },
     onDropRejected: () => {
@@ -105,5 +86,5 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
     },
   });
 
-  return { ...dropzoneState, uploadedPhotos, setUploadedPhotos };
+  return { ...dropzoneState, uploadedImages, setUploadedImages };
 }

@@ -1,5 +1,5 @@
 import invariant from "tiny-invariant";
-import type { UploadedPhoto } from "~/hooks/use-enhancer-dropzone";
+import type { UploadedImage } from "~/hooks/use-enhancer-dropzone";
 
 const { REPLICATE_API_TOKEN } = process.env;
 invariant(
@@ -178,10 +178,10 @@ async function runReplicatePrediction(
   const jsonStartResponse = await startResponse.json();
   const endpointUrl = jsonStartResponse.urls.get;
 
-  // GET request to get the status of the photo enhancement process & return the result when it's ready
-  let enhancedPhoto: string | null = null;
+  // GET request to get the status of the image enhancement process & return the result when it's ready
+  let enhancedImage: string | null = null;
   let errorMessage: string | null = null;
-  while (!enhancedPhoto) {
+  while (!enhancedImage) {
     // Loop in `pollingInterval` intervals until the image is ready
     const finalResponse = await fetch(endpointUrl, {
       method: "GET",
@@ -193,7 +193,7 @@ async function runReplicatePrediction(
 
     const jsonFinalResponse = await finalResponse.json();
     if (jsonFinalResponse.status === "succeeded") {
-      enhancedPhoto = jsonFinalResponse.output;
+      enhancedImage = jsonFinalResponse.output;
     } else if (
       jsonFinalResponse.status === "failed" ||
       jsonFinalResponse.status === "canceled"
@@ -205,7 +205,7 @@ async function runReplicatePrediction(
     }
   }
 
-  if (!enhancedPhoto) {
+  if (!enhancedImage) {
     if (errorMessage) {
       throw new Error(
         `runReplicatePrediction: failed with body ${JSON.stringify(
@@ -225,7 +225,7 @@ async function runReplicatePrediction(
     }
   }
 
-  return enhancedPhoto;
+  return enhancedImage;
 }
 
 interface Result {
@@ -233,20 +233,20 @@ interface Result {
   model: string;
 }
 
-interface EnhancedPhoto {
-  originalPhoto: UploadedPhoto;
+interface EnhancedImage {
+  originalImage: UploadedImage;
   results: Result[];
 }
 
-export async function enhancePhotos(effect: Effect, photos: UploadedPhoto[]) {
+export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
   if (effect === Effect.WatermarkRemoval) {
     throw new Error("Watermark Removal not yet implemented");
   }
 
   const replicateVersion = getReplicateVersion(effect);
   try {
-    const enhancedPhotos = await Promise.all(
-      photos.map(async (photo) => {
+    const enhancedImages = await Promise.all(
+      images.map(async (image) => {
         switch (replicateVersion) {
           case ReplicateVersion.maxim: {
             const models = getMaximModels(effect);
@@ -256,7 +256,7 @@ export async function enhancePhotos(effect: Effect, photos: UploadedPhoto[]) {
                   version: ReplicateVersion.maxim,
                   input: {
                     model,
-                    image: photo.dataURL,
+                    image: image.dataUrl,
                   },
                 });
 
@@ -266,15 +266,15 @@ export async function enhancePhotos(effect: Effect, photos: UploadedPhoto[]) {
 
             return {
               results,
-              originalPhoto: photo,
-            } as EnhancedPhoto;
+              originalImage: image,
+            } as EnhancedImage;
           }
 
           case ReplicateVersion.bigcolor:
             const url = await runReplicatePrediction({
               version: ReplicateVersion.bigcolor,
               input: {
-                image: photo.dataURL,
+                image: image.dataUrl,
                 mode: "Real Gray Colorization",
                 classes: "88",
               },
@@ -282,14 +282,14 @@ export async function enhancePhotos(effect: Effect, photos: UploadedPhoto[]) {
 
             return {
               results: [{ url, model: `bigcolor - Real Gray Colorization` }],
-              originalPhoto: photo,
-            } as EnhancedPhoto;
+              originalImage: image,
+            } as EnhancedImage;
 
           case ReplicateVersion.gfpgan: {
             const url = await runReplicatePrediction({
               version: ReplicateVersion.gfpgan,
               input: {
-                img: photo.dataURL,
+                img: image.dataUrl,
                 version: "v1.4",
                 scale: 2,
               },
@@ -297,15 +297,15 @@ export async function enhancePhotos(effect: Effect, photos: UploadedPhoto[]) {
 
             return {
               results: [{ url, model: `gfpgan` }],
-              originalPhoto: photo,
-            } as EnhancedPhoto;
+              originalImage: image,
+            } as EnhancedImage;
           }
 
           case ReplicateVersion.swinir: {
             const url = await runReplicatePrediction({
               version: ReplicateVersion.swinir,
               input: {
-                image: photo.dataURL,
+                image: image.dataUrl,
                 task_type: "Real-World Image Super-Resolution-Large",
                 noise: 15,
                 jpeg: 40,
@@ -319,16 +319,16 @@ export async function enhancePhotos(effect: Effect, photos: UploadedPhoto[]) {
                   model: `swinir - Real-World Image Super-Resolution-Large`,
                 },
               ],
-              originalPhoto: photo,
-            } as EnhancedPhoto;
+              originalImage: image,
+            } as EnhancedImage;
           }
         }
       })
     );
 
-    return enhancedPhotos;
+    return enhancedImages;
   } catch (error) {
     console.error(error);
-    throw new Error("enhancePhotos: Replicate failed to run predictions");
+    throw new Error("enhanceImages: Replicate failed to run predictions");
   }
 }

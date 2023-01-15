@@ -83,7 +83,7 @@ export function Features({ isSignedIn }: FeaturesProps) {
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             <span className="block">And much more.</span>
             <span className="block text-purple-600">
-              Start enhancing photos today.
+              Start enhancing images today.
             </span>
           </h2>
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
