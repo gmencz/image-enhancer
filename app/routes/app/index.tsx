@@ -46,11 +46,12 @@ export async function loader({ request }: LoaderArgs) {
   }
 
   const maxLimit = 5;
-  const limit = remainingEnhancements
-    ? remainingEnhancements > maxLimit
-      ? maxLimit
-      : remainingEnhancements
-    : maxLimit;
+  const limit =
+    remainingEnhancements !== null
+      ? remainingEnhancements > maxLimit
+        ? maxLimit
+        : remainingEnhancements
+      : maxLimit;
 
   return json({
     limit,
