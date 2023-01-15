@@ -16,7 +16,7 @@ export function AppIndexUploadedImagesList({
 
   return (
     <div className="mt-12">
-      <ul className="flex flex-wrap justify-center items-center gap-8 mt-4">
+      <ul className="flex flex-wrap gap-8 mt-4">
         {uploadedImages.map((uploadedImage) => (
           <li key={uploadedImage.name} className="relative">
             <img
@@ -27,9 +27,9 @@ export function AppIndexUploadedImagesList({
 
             <button
               onClick={() => removeImage(uploadedImage)}
-              className="flex items-center justify-center absolute -top-2 -left-2 bg-purple-600 rounded-full h-8 w-8 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              className="flex items-center justify-center absolute -top-2 -left-2 bg-gray-50 rounded-full h-8 w-8 focus:outline-none ring-2 ring-purple-500 ring-offset-2 hover:scale-110"
             >
-              <XMarkIcon className="h-5 w-5 text-white" />
+              <XMarkIcon className="h-5 w-5 text-purple-600" />
               <span className="sr-only">Remove</span>
             </button>
           </li>

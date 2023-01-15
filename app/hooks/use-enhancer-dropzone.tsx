@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "react-hot-toast";
 import { ErrorToast } from "~/components/ErrorToast";
-import { blobToDataUrl } from "~/lib/files";
 
 export interface UploadedImage {
   dataUrl: string;
@@ -63,7 +62,12 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
           break;
         }
 
-        const dataUrl = await blobToDataUrl(file);
+        const dataUrl = await new Promise<string>((resolve) => {
+          let reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+
         setUploadedImages((prev) => [
           ...prev,
           { dataUrl, name: file.name, sizeInMb },

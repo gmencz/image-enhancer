@@ -1,20 +1,21 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
-import { Fragment } from "react";
+import { useActionData, useLoaderData } from "@remix-run/react";
+import { useEffect } from "react";
 import { prisma } from "~/lib/prisma.server";
 import { useEnhancerDropzone } from "~/hooks/use-enhancer-dropzone";
 import { AppIndexHeader } from "~/components/AppIndex/Header";
 import { AppIndexUploadedImagesList } from "~/components/AppIndex/UploadedImagesList";
 import { AppIndexDropzone } from "~/components/AppIndex/Dropzone";
 import { AppIndexEnhanceForm } from "~/components/AppIndex/EnhanceForm";
-import { requireUser, requireUserId } from "~/lib/session.server";
+import { requireUser } from "~/lib/session.server";
 import { z } from "zod";
 import { isOverLimit } from "~/lib/rate-limiting.server";
 import { Effect, enhanceImages } from "~/lib/enhancer.server";
 import { uploadImage } from "~/lib/image-worker.server";
-import { blobToDataUrl } from "~/lib/files";
+import { toast } from "react-hot-toast";
+import { ErrorToast } from "~/components/ErrorToast";
 
 export async function loader({ request }: LoaderArgs) {
   const user = await requireUser(request);
@@ -72,7 +73,7 @@ const schema = z.object({
 });
 
 export async function action({ request }: ActionArgs) {
-  const userId = await requireUserId(request);
+  const user = await requireUser(request);
   const body = await request.formData();
   const validation = await schema.safeParseAsync({
     effect: body.get("effect"),
@@ -90,7 +91,7 @@ export async function action({ request }: ActionArgs) {
       max: 3,
       windowInSeconds: 60,
     },
-    userId
+    user.id
   );
 
   if (overLimit) {
@@ -100,58 +101,123 @@ export async function action({ request }: ActionArgs) {
     );
   }
 
-  const enhancedImages = await enhanceImages(
-    validation.data.effect,
-    validation.data.images
-  );
+  const plan = await prisma.plan.findFirst({
+    where: { users: { some: { id: user.id } } },
+    select: {
+      enhancementsLimit: true,
+    },
+  });
 
-  const uploadedImages = await Promise.all(
-    enhancedImages.map(async (enhancedImage) => {
-      const originalImageUrl = await uploadImage(
-        enhancedImage.originalImage.dataUrl
-      );
+  if (!plan) {
+    return json(
+      { error: "Something went wrong getting your plan" },
+      { status: 500 }
+    );
+  }
 
-      const uploadedEnhancedImages = await Promise.all(
-        enhancedImage.results.map(async (result) => {
-          const blob = await fetch(result.url).then((r) => r.blob());
-          const dataUrl = await blobToDataUrl(blob);
-          const imageUrl = await uploadImage(dataUrl);
-          return { ...result, url: imageUrl };
-        })
-      );
+  const enhancementsCount = await prisma.imageEnhancement.count({
+    where: {
+      userId: user.id,
+    },
+  });
 
-      return {
-        originalImage: {
-          name: enhancedImage.originalImage.name,
-          url: originalImageUrl,
-        },
-        results: uploadedEnhancedImages,
-      };
-    })
-  );
+  let remainingEnhancements: number | null = null;
+  if (plan.enhancementsLimit) {
+    if (enhancementsCount >= plan.enhancementsLimit) {
+      remainingEnhancements = 0;
+    } else {
+      remainingEnhancements = plan.enhancementsLimit - enhancementsCount;
+    }
+  }
 
-  await Promise.all(
-    uploadedImages.map(async ({ originalImage, results }) => {
-      return prisma.imageEnhancement.create({
-        data: {
-          userId,
-          effect: validation.data.effect,
-          originalImageName: originalImage.name,
-          originalImageUrl: originalImage.url,
-          results: {
-            createMany: {
-              data: results.map((result) => ({
-                url: result.url,
-                model: result.model,
-              })),
+  if (remainingEnhancements === 0) {
+    return json(
+      { error: "You don't have any free images left, upgrade to get more." },
+      { status: 400 }
+    );
+  }
+
+  if (
+    remainingEnhancements &&
+    validation.data.images.length > remainingEnhancements
+  ) {
+    return json(
+      {
+        error: `You only have ${remainingEnhancements} free images left and you tried to enhance ${validation.data.images.length}, upgrade to get more.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const enhancedImages = await enhanceImages(
+      validation.data.effect,
+      validation.data.images
+    );
+
+    const uploadedImages = await Promise.all(
+      enhancedImages.map(async (enhancedImage) => {
+        const originalImageUrl = await uploadImage(
+          enhancedImage.originalImage.dataUrl
+        );
+
+        const uploadedEnhancedImages = await Promise.all(
+          enhancedImage.results.map(async (result) => {
+            const response = await fetch(result.url);
+            const contentType = response.headers.get("Content-Type");
+            const buffer = Buffer.from(await response.arrayBuffer());
+            const imageUrl = await uploadImage(
+              "data:" + contentType + ";base64," + buffer.toString("base64")
+            );
+            return { ...result, url: imageUrl };
+          })
+        );
+
+        return {
+          originalImage: {
+            name: enhancedImage.originalImage.name,
+            url: originalImageUrl,
+          },
+          results: uploadedEnhancedImages,
+        };
+      })
+    );
+
+    await Promise.all(
+      uploadedImages.map(async ({ originalImage, results }) => {
+        return prisma.imageEnhancement.create({
+          data: {
+            userId: user.id,
+            effect: validation.data.effect,
+            originalImageName: originalImage.name,
+            originalImageUrl: originalImage.url,
+            results: {
+              createMany: {
+                data: results.map((result) => ({
+                  url: result.url,
+                  model: result.model,
+                })),
+              },
             },
           },
-        },
-      });
-    })
-  );
+        });
+      })
+    );
+  } catch (error) {
+    console.error(error);
+    return json(
+      {
+        error: "Something went wrong enhancing your images.",
+      },
+      { status: 500 }
+    );
+  }
 
   return redirect("/app/images");
+}
+
+interface ActionData {
+  error?: string;
 }
 
 export default function AppIndex() {
@@ -165,6 +231,21 @@ export default function AppIndex() {
     uploadedImages,
     setUploadedImages,
   } = useEnhancerDropzone({ limit });
+
+  const actionData = useActionData<ActionData>();
+
+  useEffect(() => {
+    if (actionData?.error) {
+      toast.custom(
+        (t) => (
+          <ErrorToast t={t} title="Oops!" description={actionData.error!} />
+        ),
+        {
+          duration: Infinity,
+        }
+      );
+    }
+  }, [actionData?.error]);
 
   const disabled = limit === 0;
 
