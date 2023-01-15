@@ -62,6 +62,10 @@ interface SwinirInput {
   jpeg: number;
 }
 
+interface BigcolorOutput {
+  image: string;
+}
+
 interface ReplicatePredictionBody {
   version: ReplicateVersion;
   input: MaximInput | BigcolorInput | GfpganInput | SwinirInput;
@@ -179,9 +183,9 @@ async function runReplicatePrediction(
   const endpointUrl = jsonStartResponse.urls.get;
 
   // GET request to get the status of the image enhancement process & return the result when it's ready
-  let enhancedImage: string | null = null;
+  const enhancedImages: string[] = [];
   let errorMessage: string | null = null;
-  while (!enhancedImage) {
+  while (!enhancedImages.length) {
     // Loop in `pollingInterval` intervals until the image is ready
     const finalResponse = await fetch(endpointUrl, {
       method: "GET",
@@ -193,7 +197,14 @@ async function runReplicatePrediction(
 
     const jsonFinalResponse = await finalResponse.json();
     if (jsonFinalResponse.status === "succeeded") {
-      enhancedImage = jsonFinalResponse.output;
+      // bigcolor returns an array of outputs instead of a single one.
+      if (Array.isArray(jsonFinalResponse.output)) {
+        jsonFinalResponse.output.forEach((output: BigcolorOutput) => {
+          enhancedImages.push(output.image);
+        });
+      } else {
+        enhancedImages.push(jsonFinalResponse.output);
+      }
     } else if (
       jsonFinalResponse.status === "failed" ||
       jsonFinalResponse.status === "canceled"
@@ -205,7 +216,7 @@ async function runReplicatePrediction(
     }
   }
 
-  if (!enhancedImage) {
+  if (!enhancedImages.length) {
     if (errorMessage) {
       throw new Error(
         `runReplicatePrediction: failed with body ${JSON.stringify(
@@ -225,7 +236,7 @@ async function runReplicatePrediction(
     }
   }
 
-  return enhancedImage;
+  return enhancedImages;
 }
 
 interface Result {
@@ -250,9 +261,9 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
         switch (replicateVersion) {
           case ReplicateVersion.maxim: {
             const models = getMaximModels(effect);
-            const results: Result[] = await Promise.all(
+            const results = await Promise.all(
               models.map(async (model) => {
-                const url = await runReplicatePrediction({
+                const urls = await runReplicatePrediction({
                   version: ReplicateVersion.maxim,
                   input: {
                     model,
@@ -260,18 +271,18 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
                   },
                 });
 
-                return { model: `maxim - ${model}`, url };
+                return urls.map((url) => ({ model: `maxim - ${model}`, url }));
               })
             );
 
             return {
-              results,
+              results: results.flat(),
               originalImage: image,
             } as EnhancedImage;
           }
 
           case ReplicateVersion.bigcolor:
-            const url = await runReplicatePrediction({
+            const urls = await runReplicatePrediction({
               version: ReplicateVersion.bigcolor,
               input: {
                 image: image.dataUrl,
@@ -281,12 +292,15 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
             });
 
             return {
-              results: [{ url, model: `bigcolor - Real Gray Colorization` }],
+              results: urls.map((url) => ({
+                url,
+                model: `bigcolor - Real Gray Colorization`,
+              })),
               originalImage: image,
             } as EnhancedImage;
 
           case ReplicateVersion.gfpgan: {
-            const url = await runReplicatePrediction({
+            const urls = await runReplicatePrediction({
               version: ReplicateVersion.gfpgan,
               input: {
                 img: image.dataUrl,
@@ -296,13 +310,13 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
             });
 
             return {
-              results: [{ url, model: `gfpgan` }],
+              results: urls.map((url) => ({ url, model: `gfpgan` })),
               originalImage: image,
             } as EnhancedImage;
           }
 
           case ReplicateVersion.swinir: {
-            const url = await runReplicatePrediction({
+            const urls = await runReplicatePrediction({
               version: ReplicateVersion.swinir,
               input: {
                 image: image.dataUrl,
@@ -313,12 +327,10 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
             });
 
             return {
-              results: [
-                {
-                  url,
-                  model: `swinir - Real-World Image Super-Resolution-Large`,
-                },
-              ],
+              results: urls.map((url) => ({
+                url,
+                model: `swinir - Real-World Image Super-Resolution-Large`,
+              })),
               originalImage: image,
             } as EnhancedImage;
           }

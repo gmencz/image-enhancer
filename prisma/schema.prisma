@@ -45,6 +45,7 @@ model ImageEnhancement {
   originalImageName String
   originalImageUrl  String
   results           ImageEnhancementResult[]
+  favorited         Boolean                  @default(false)
 
   @@map("image_enhancements")
 }

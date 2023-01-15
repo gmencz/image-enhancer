@@ -14,7 +14,7 @@ export async function loader({ request }: LoaderArgs) {
 
 const navigation = [
   { name: "Enhancer", href: "/app/" },
-  { name: "Images", href: "/app/images" },
+  { name: "Images", href: "/app/images/" },
 ];
 
 const userNavigation = [
@@ -31,7 +31,7 @@ export default function App() {
         <Disclosure as="nav" className="border-b border-gray-200 bg-white">
           {({ open }) => (
             <>
-              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 justify-between">
                   <div className="flex">
                     <div className="flex flex-shrink-0 items-center">

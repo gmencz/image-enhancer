@@ -213,7 +213,7 @@ export async function action({ request }: ActionArgs) {
     );
   }
 
-  return redirect("/app/images");
+  return redirect("/app/images/");
 }
 
 interface ActionData {
@@ -251,12 +251,12 @@ export default function AppIndex() {
 
   return (
     <>
-      <AppIndexHeader
-        limit={limit}
-        hasEnhancementsLimit={hasEnhancementsLimit}
-      />
-      <main>
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 my-14">
+      <main className="mx-auto max-w-4xl px-4 pt-8 sm:px-6 lg:px-8">
+        <AppIndexHeader
+          limit={limit}
+          hasEnhancementsLimit={hasEnhancementsLimit}
+        />
+        <div className="my-14">
           <AppIndexDropzone
             getInputProps={getInputProps}
             getRootProps={getRootProps}

@@ -10,9 +10,9 @@ export function AppIndexHeader({
   hasEnhancementsLimit,
 }: AppIndexHeaderProps) {
   return (
-    <header className="sm:pt-8">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-center sm:text-5xl">
+    <header>
+      <div>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl sm:text-center">
           Enhance your images
         </h1>
 

@@ -9,6 +9,8 @@ interface SelectProps {
   selected: string;
   setSelected: React.Dispatch<React.SetStateAction<string>>;
   description?: string;
+  labelClassName?: string;
+  onChange?: (selected: string) => void;
 }
 
 export function Select({
@@ -17,13 +19,26 @@ export function Select({
   selected,
   setSelected,
   description,
+  labelClassName,
+  onChange,
 }: SelectProps) {
   return (
     <>
-      <Listbox value={selected} onChange={setSelected}>
+      <Listbox
+        value={selected}
+        onChange={(v) => {
+          setSelected(v);
+          onChange?.(v);
+        }}
+      >
         {({ open }) => (
           <>
-            <Listbox.Label className="block text-sm font-medium text-gray-700">
+            <Listbox.Label
+              className={clsx(
+                "block text-sm font-medium text-gray-700",
+                labelClassName && labelClassName
+              )}
+            >
               {label}
             </Listbox.Label>
             <div className="relative mt-1">
