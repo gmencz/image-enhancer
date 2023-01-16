@@ -46,6 +46,8 @@ model ImageEnhancement {
   originalImageUrl  String
   results           ImageEnhancementResult[]
   favorited         Boolean                  @default(false)
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  timeMetric        Float?                   @map("time_metric")
 
   @@map("image_enhancements")
 }

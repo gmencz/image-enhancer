@@ -156,6 +156,14 @@ function getMaximModels(effect: Effect) {
   return models;
 }
 
+function getReplicateOutputUrls(output: string | BigcolorOutput[]) {
+  if (Array.isArray(output)) {
+    return output.map((output) => output.image);
+  }
+
+  return [output];
+}
+
 /**
  * Creates a replicate prediction (https://replicate.com/docs/reference/http#create-prediction) and returns
  * the result when it's ready or throws if the prediction fails or is canceled.
@@ -183,9 +191,10 @@ async function runReplicatePrediction(
   const endpointUrl = jsonStartResponse.urls.get;
 
   // GET request to get the status of the image enhancement process & return the result when it's ready
-  const enhancedImages: string[] = [];
+  let outputUrls: string[] = [];
   let errorMessage: string | null = null;
-  while (!enhancedImages.length) {
+  let timeMetric: number | null = null;
+  while (!outputUrls.length) {
     // Loop in `pollingInterval` intervals until the image is ready
     const finalResponse = await fetch(endpointUrl, {
       method: "GET",
@@ -197,14 +206,8 @@ async function runReplicatePrediction(
 
     const jsonFinalResponse = await finalResponse.json();
     if (jsonFinalResponse.status === "succeeded") {
-      // bigcolor returns an array of outputs instead of a single one.
-      if (Array.isArray(jsonFinalResponse.output)) {
-        jsonFinalResponse.output.forEach((output: BigcolorOutput) => {
-          enhancedImages.push(output.image);
-        });
-      } else {
-        enhancedImages.push(jsonFinalResponse.output);
-      }
+      outputUrls = getReplicateOutputUrls(jsonFinalResponse.output);
+      timeMetric = jsonFinalResponse.metrics.predict_time;
     } else if (
       jsonFinalResponse.status === "failed" ||
       jsonFinalResponse.status === "canceled"
@@ -216,7 +219,7 @@ async function runReplicatePrediction(
     }
   }
 
-  if (!enhancedImages.length) {
+  if (!outputUrls.length || !timeMetric) {
     if (errorMessage) {
       throw new Error(
         `runReplicatePrediction: failed with body ${JSON.stringify(
@@ -236,7 +239,7 @@ async function runReplicatePrediction(
     }
   }
 
-  return enhancedImages;
+  return { outputUrls, timeMetric };
 }
 
 interface Result {
@@ -246,6 +249,7 @@ interface Result {
 
 interface EnhancedImage {
   originalImage: UploadedImage;
+  timeMetric: number;
   results: Result[];
 }
 
@@ -261,9 +265,9 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
         switch (replicateVersion) {
           case ReplicateVersion.maxim: {
             const models = getMaximModels(effect);
-            const results = await Promise.all(
+            const predictions = await Promise.all(
               models.map(async (model) => {
-                const urls = await runReplicatePrediction({
+                const result = await runReplicatePrediction({
                   version: ReplicateVersion.maxim,
                   input: {
                     model,
@@ -271,18 +275,30 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
                   },
                 });
 
-                return urls.map((url) => ({ model: `maxim - ${model}`, url }));
+                return {
+                  timeMetric: result.timeMetric,
+                  results: result.outputUrls.map((url) => ({
+                    model: `maxim - ${model}`,
+                    url,
+                  })),
+                };
               })
             );
 
+            const totalTimeMetric = predictions.reduce(
+              (acc, { timeMetric }) => acc + timeMetric,
+              0
+            );
+
             return {
-              results: results.flat(),
+              timeMetric: totalTimeMetric,
               originalImage: image,
+              results: predictions.flatMap((prediction) => prediction.results),
             } as EnhancedImage;
           }
 
           case ReplicateVersion.bigcolor:
-            const urls = await runReplicatePrediction({
+            const prediction = await runReplicatePrediction({
               version: ReplicateVersion.bigcolor,
               input: {
                 image: image.dataUrl,
@@ -292,15 +308,16 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
             });
 
             return {
-              results: urls.map((url) => ({
+              results: prediction.outputUrls.map((url) => ({
                 url,
                 model: `bigcolor - Real Gray Colorization`,
               })),
+              timeMetric: prediction.timeMetric,
               originalImage: image,
             } as EnhancedImage;
 
           case ReplicateVersion.gfpgan: {
-            const urls = await runReplicatePrediction({
+            const prediction = await runReplicatePrediction({
               version: ReplicateVersion.gfpgan,
               input: {
                 img: image.dataUrl,
@@ -310,13 +327,17 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
             });
 
             return {
-              results: urls.map((url) => ({ url, model: `gfpgan` })),
+              results: prediction.outputUrls.map((url) => ({
+                url,
+                model: `gfpgan`,
+              })),
+              timeMetric: prediction.timeMetric,
               originalImage: image,
             } as EnhancedImage;
           }
 
           case ReplicateVersion.swinir: {
-            const urls = await runReplicatePrediction({
+            const prediction = await runReplicatePrediction({
               version: ReplicateVersion.swinir,
               input: {
                 image: image.dataUrl,
@@ -327,10 +348,11 @@ export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
             });
 
             return {
-              results: urls.map((url) => ({
+              results: prediction.outputUrls.map((url) => ({
                 url,
                 model: `swinir - Real-World Image Super-Resolution-Large`,
               })),
+              timeMetric: prediction.timeMetric,
               originalImage: image,
             } as EnhancedImage;
           }

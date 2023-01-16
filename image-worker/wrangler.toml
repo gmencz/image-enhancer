@@ -11,6 +11,7 @@ bucket_name = "imxgic"
 command = "node build.js"
 
 [miniflare]
+r2_persist = true
 kv_persist = true
 cache_persist = true
 durable_objects_persist = true

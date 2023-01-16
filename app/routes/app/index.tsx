@@ -179,19 +179,21 @@ export async function action({ request }: ActionArgs) {
             name: enhancedImage.originalImage.name,
             url: originalImageUrl,
           },
+          timeMetric: enhancedImage.timeMetric,
           results: uploadedEnhancedImages,
         };
       })
     );
 
-    await Promise.all(
-      uploadedImages.map(async ({ originalImage, results }) => {
+    const imageEnhancements = await Promise.all(
+      uploadedImages.map(async ({ originalImage, results, timeMetric }) => {
         return prisma.imageEnhancement.create({
           data: {
             userId: user.id,
             effect: validation.data.effect,
             originalImageName: originalImage.name,
             originalImageUrl: originalImage.url,
+            timeMetric,
             results: {
               createMany: {
                 data: results.map((result) => ({
@@ -204,6 +206,12 @@ export async function action({ request }: ActionArgs) {
         });
       })
     );
+
+    if (imageEnhancements.length === 1) {
+      return redirect(`/app/images?show_image_id=${imageEnhancements[0].id}`);
+    }
+
+    return redirect("/app/images");
   } catch (error) {
     console.error(error);
     return json(
@@ -213,8 +221,6 @@ export async function action({ request }: ActionArgs) {
       { status: 500 }
     );
   }
-
-  return redirect("/app/images/");
 }
 
 interface ActionData {
@@ -252,7 +258,7 @@ export default function AppIndex() {
 
   return (
     <>
-      <main className="mx-auto max-w-4xl px-4 pt-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-4xl px-4 pt-8 sm:pt-20 sm:px-6 lg:px-8">
         <AppIndexHeader
           limit={limit}
           hasEnhancementsLimit={hasEnhancementsLimit}

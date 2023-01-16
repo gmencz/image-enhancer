@@ -13,8 +13,8 @@ export async function loader({ request }: LoaderArgs) {
 }
 
 const navigation = [
-  { name: "Enhancer", href: "/app/" },
-  { name: "Images", href: "/app/images/" },
+  { name: "Enhancer", href: "/app", end: true },
+  { name: "Images", href: "/app/images", end: false },
 ];
 
 const userNavigation = [
@@ -46,6 +46,7 @@ export default function App() {
                         <NavLink
                           key={item.name}
                           to={item.href}
+                          end={item.end}
                           className={({ isActive }) =>
                             clsx(
                               isActive
@@ -125,6 +126,7 @@ export default function App() {
                     <Disclosure.Button key={item.name} as={Fragment}>
                       <NavLink
                         to={item.href}
+                        end={item.end}
                         className={({ isActive }) =>
                           clsx(
                             isActive
@@ -167,9 +169,7 @@ export default function App() {
           )}
         </Disclosure>
 
-        <div className="py-10">
-          <Outlet />
-        </div>
+        <Outlet />
       </div>
     </>
   );

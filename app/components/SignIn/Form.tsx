@@ -25,13 +25,18 @@ export function SignInForm() {
 
   useEffect(() => {
     if (isSuccess) {
-      toast.custom((t) => (
-        <SuccessToast
-          t={t}
-          title="Check your inbox!"
-          description={`We've sent you an email with the sign in link at ${actionData.fieldValues.email}`}
-        />
-      ));
+      toast.custom(
+        (t) => (
+          <SuccessToast
+            t={t}
+            title="Check your inbox!"
+            description={`We've sent you an email with the sign in link at ${actionData.fieldValues.email}.`}
+          />
+        ),
+        {
+          duration: Infinity,
+        }
+      );
     }
   }, [actionData?.fieldValues.email, isSuccess]);
 

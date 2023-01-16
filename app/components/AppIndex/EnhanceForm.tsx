@@ -29,7 +29,7 @@ export function AppIndexEnhanceForm({
       <div className="flex-1">
         <Select
           label="Effect"
-          description="Some effects may take up to 5 minutes to run but you don't have to stay on this tab for them to complete."
+          description="Some effects may take up to 10 minutes to run so we ask you to be patient. You also don't have to stay on this tab for them to complete."
           options={effects}
           selected={effect}
           setSelected={setEffect}

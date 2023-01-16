@@ -17,7 +17,7 @@ export function Hero({ isSignedIn }: HeroProps) {
               <span className="text-gray-600">
                 30% off during launch week -{" "}
                 <Link
-                  to={isSignedIn ? "/app/" : "/sign-in"}
+                  to={isSignedIn ? "/app" : "/sign-in"}
                   className="font-semibold text-purple-600"
                 >
                   <span className="absolute inset-0" aria-hidden="true" />
@@ -37,7 +37,7 @@ export function Hero({ isSignedIn }: HeroProps) {
             </p>
             <div className="mt-8 flex gap-x-4 sm:justify-center">
               <Link
-                to={isSignedIn ? "/app/" : "/sign-in"}
+                to={isSignedIn ? "/app" : "/sign-in"}
                 className="inline-block rounded-lg bg-purple-600 px-4 py-1.5 text-base font-semibold leading-7 text-white shadow-sm ring-1 ring-purple-600 hover:bg-purple-700 hover:ring-purple-700"
               >
                 Get started for free{" "}
