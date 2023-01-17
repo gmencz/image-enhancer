@@ -33,7 +33,6 @@ export enum Effect {
   DehazeIndoor = "Dehaze (Indoors)",
   Lighten = "Lighten",
   Retouch = "Retouch",
-  WatermarkRemoval = "Watermark removal",
   Colorize = "Colorize",
   FaceRestoration = "Face restoration",
 }
@@ -254,10 +253,6 @@ interface EnhancedImage {
 }
 
 export async function enhanceImages(effect: Effect, images: UploadedImage[]) {
-  if (effect === Effect.WatermarkRemoval) {
-    throw new Error("Watermark Removal not yet implemented");
-  }
-
   const replicateVersion = getReplicateVersion(effect);
   try {
     const enhancedImages = await Promise.all(

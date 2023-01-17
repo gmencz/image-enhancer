@@ -21,11 +21,6 @@ export const featuresImages = [
     before: "/features/dehazing-before.png",
     after: "/features/dehazing-after.png",
   },
-  {
-    name: "Watermark Removal",
-    before: "/features/watermark-before.png",
-    after: "/features/watermark-after.png",
-  },
 ];
 
 interface FeaturesProps {
