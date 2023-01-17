@@ -7,21 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Plan {
-  id                Int    @id @default(autoincrement())
-  name              String @unique
-  enhancementsLimit Int?   @map("enhancements_limit")
-  users             User[]
-
-  @@map("plans")
-}
-
 model User {
   id                Int                @id @default(autoincrement())
   email             String             @unique
   imageEnhancements ImageEnhancement[]
-  plan              Plan               @relation(fields: [planId], references: [id])
-  planId            Int                @map("plan_id")
+  credits           Int                @default(5) // Everyone gets 5 credits for free
 
   @@map("users")
 }

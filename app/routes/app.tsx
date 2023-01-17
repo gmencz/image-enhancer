@@ -1,14 +1,27 @@
 import type { LoaderArgs } from "@remix-run/node";
+import { redirect } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { requireUser } from "~/lib/session.server";
+import { requireUserId } from "~/lib/session.server";
 import { Fragment } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
+import { prisma } from "~/lib/prisma.server";
 
 export async function loader({ request }: LoaderArgs) {
-  const user = await requireUser(request);
+  const userId = await requireUserId(request);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+    },
+  });
+
+  if (!user) {
+    throw redirect("/sign-out");
+  }
+
   return json({ user });
 }
 

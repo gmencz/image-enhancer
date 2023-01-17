@@ -10,14 +10,14 @@ export interface UploadedImage {
 }
 
 interface UseEnhancerDropzone {
-  limit: number;
+  imagesAllowed: number;
 }
 
-export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
+export function useEnhancerDropzone({ imagesAllowed }: UseEnhancerDropzone) {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
 
   const dropzoneState = useDropzone({
-    disabled: limit === 0,
+    disabled: imagesAllowed === 0,
     onDrop: async (acceptedFiles) => {
       for (const file of acceptedFiles) {
         // Max 2MB per file
@@ -34,7 +34,7 @@ export function useEnhancerDropzone({ limit }: UseEnhancerDropzone) {
           break;
         }
 
-        if (uploadedImages.length >= limit) {
+        if (uploadedImages.length >= imagesAllowed) {
           toast.custom((t) => (
             <ErrorToast
               t={t}

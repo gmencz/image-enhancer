@@ -1,13 +1,13 @@
 import { Link } from "@remix-run/react";
 
 interface AppIndexHeaderProps {
-  limit: number;
-  hasEnhancementsLimit: boolean;
+  imagesAllowed: number;
+  maxImagesAllowed: number;
 }
 
 export function AppIndexHeader({
-  limit,
-  hasEnhancementsLimit,
+  imagesAllowed,
+  maxImagesAllowed,
 }: AppIndexHeaderProps) {
   return (
     <header>
@@ -16,35 +16,31 @@ export function AppIndexHeader({
           Enhance your images
         </h1>
 
-        {hasEnhancementsLimit ? (
-          <p className="mt-6 text-lg text-gray-600 sm:text-center">
-            {limit === 0 ? (
-              <>
-                You don't have any free images left,{" "}
-                <Link to="/app/account" className="text-purple-500 underline">
-                  upgrade
-                </Link>{" "}
-                to get more.
-              </>
-            ) : (
-              <>
-                You have{" "}
-                {limit === 1
-                  ? `1 free image of max 2MB left`
-                  : `${limit} free images of max 2MB each left`}
-                ,{" "}
-                <Link to="/app/account" className="text-purple-500 underline">
-                  upgrade
-                </Link>{" "}
-                to get more.
-              </>
-            )}
-          </p>
-        ) : (
-          <p className="mt-6 text-lg text-gray-600 sm:text-center">
-            Up to {limit} images, max 2MB each.
-          </p>
-        )}
+        <p className="mt-6 text-lg text-gray-600 sm:text-center">
+          {imagesAllowed === 0 ? (
+            <>
+              You don't have any credits,{" "}
+              <Link to="/app/account" className="text-purple-500 underline">
+                buy more here
+              </Link>
+              .
+            </>
+          ) : imagesAllowed === maxImagesAllowed ? (
+            <>Up to {imagesAllowed} images, max 2MB each.</>
+          ) : (
+            <>
+              You have{" "}
+              {imagesAllowed === 1
+                ? `1 credit (1 image of max 2MB) left`
+                : `${imagesAllowed} credits (${imagesAllowed} images of max 2MB each) left`}
+              ,{" "}
+              <Link to="/app/account" className="text-purple-500 underline">
+                buy more here
+              </Link>
+              .
+            </>
+          )}
+        </p>
       </div>
     </header>
   );

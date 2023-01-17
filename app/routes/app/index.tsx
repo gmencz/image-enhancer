@@ -9,7 +9,7 @@ import { AppIndexHeader } from "~/components/AppIndex/Header";
 import { AppIndexUploadedImagesList } from "~/components/AppIndex/UploadedImagesList";
 import { AppIndexDropzone } from "~/components/AppIndex/Dropzone";
 import { AppIndexEnhanceForm } from "~/components/AppIndex/EnhanceForm";
-import { requireUser } from "~/lib/session.server";
+import { requireUserId } from "~/lib/session.server";
 import { z } from "zod";
 import { isOverLimit } from "~/lib/rate-limiting.server";
 import { Effect, enhanceImages } from "~/lib/enhancer.server";
@@ -18,45 +18,21 @@ import { toast } from "react-hot-toast";
 import { ErrorToast } from "~/components/ErrorToast";
 
 export async function loader({ request }: LoaderArgs) {
-  const user = await requireUser(request);
-  const plan = await prisma.plan.findFirst({
-    where: { users: { some: { id: user.id } } },
+  const userId = await requireUserId(request);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
     select: {
-      enhancementsLimit: true,
+      credits: true,
     },
   });
 
-  if (!plan) {
-    throw new Error("This shouldn't happen");
+  if (!user) {
+    throw redirect("/sign-out");
   }
-
-  const enhancementsCount = await prisma.imageEnhancement.count({
-    where: {
-      userId: user.id,
-    },
-  });
-
-  let remainingEnhancements: number | null = null;
-  if (plan.enhancementsLimit) {
-    if (enhancementsCount >= plan.enhancementsLimit) {
-      remainingEnhancements = 0;
-    } else {
-      remainingEnhancements = plan.enhancementsLimit - enhancementsCount;
-    }
-  }
-
-  const maxLimit = 5;
-  const limit =
-    remainingEnhancements !== null
-      ? remainingEnhancements > maxLimit
-        ? maxLimit
-        : remainingEnhancements
-      : maxLimit;
 
   return json({
-    limit,
+    credits: user.credits,
     effects: Object.values(Effect),
-    hasEnhancementsLimit: !!plan.enhancementsLimit,
   });
 }
 
@@ -74,7 +50,19 @@ const schema = z.object({
 });
 
 export async function action({ request }: ActionArgs) {
-  const user = await requireUser(request);
+  const userId = await requireUserId(request);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      credits: true,
+    },
+  });
+
+  if (!user) {
+    throw redirect("/sign-out");
+  }
+
   const body = await request.formData();
   const validation = await schema.safeParseAsync({
     effect: body.get("effect"),
@@ -102,49 +90,14 @@ export async function action({ request }: ActionArgs) {
     );
   }
 
-  const plan = await prisma.plan.findFirst({
-    where: { users: { some: { id: user.id } } },
-    select: {
-      enhancementsLimit: true,
-    },
-  });
-
-  if (!plan) {
-    return json(
-      { error: "Something went wrong getting your plan" },
-      { status: 500 }
-    );
+  if (!user.credits) {
+    return json({ error: "You don't have any credits." }, { status: 400 });
   }
 
-  const enhancementsCount = await prisma.imageEnhancement.count({
-    where: {
-      userId: user.id,
-    },
-  });
-
-  let remainingEnhancements: number | null = null;
-  if (plan.enhancementsLimit) {
-    if (enhancementsCount >= plan.enhancementsLimit) {
-      remainingEnhancements = 0;
-    } else {
-      remainingEnhancements = plan.enhancementsLimit - enhancementsCount;
-    }
-  }
-
-  if (remainingEnhancements === 0) {
-    return json(
-      { error: "You don't have any free images left, upgrade to get more." },
-      { status: 400 }
-    );
-  }
-
-  if (
-    remainingEnhancements &&
-    validation.data.images.length > remainingEnhancements
-  ) {
+  if (user.credits < validation.data.images.length) {
     return json(
       {
-        error: `You only have ${remainingEnhancements} free images left and you tried to enhance ${validation.data.images.length}, upgrade to get more.`,
+        error: `You don't have enough credits.`,
       },
       { status: 400 }
     );
@@ -207,6 +160,17 @@ export async function action({ request }: ActionArgs) {
       })
     );
 
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        credits: {
+          decrement: imageEnhancements.length,
+        },
+      },
+    });
+
     if (imageEnhancements.length === 1) {
       return redirect(`/app/images?show_image_id=${imageEnhancements[0].id}`);
     }
@@ -227,9 +191,11 @@ interface ActionData {
   error?: string;
 }
 
+const maxImagesAllowed = 5;
+
 export default function AppIndex() {
-  const { limit, effects, hasEnhancementsLimit } =
-    useLoaderData<typeof loader>();
+  const { effects, credits } = useLoaderData<typeof loader>();
+  const imagesAllowed = credits > maxImagesAllowed ? maxImagesAllowed : credits;
 
   const {
     getRootProps,
@@ -237,7 +203,7 @@ export default function AppIndex() {
     isDragActive,
     uploadedImages,
     setUploadedImages,
-  } = useEnhancerDropzone({ limit });
+  } = useEnhancerDropzone({ imagesAllowed });
 
   const actionData = useActionData<ActionData>();
 
@@ -254,14 +220,14 @@ export default function AppIndex() {
     }
   }, [actionData?.error]);
 
-  const disabled = limit === 0;
+  const disabled = imagesAllowed === 0;
 
   return (
     <>
       <main className="mx-auto max-w-4xl px-4 pt-8 sm:pt-20 sm:px-6 lg:px-8">
         <AppIndexHeader
-          limit={limit}
-          hasEnhancementsLimit={hasEnhancementsLimit}
+          imagesAllowed={imagesAllowed}
+          maxImagesAllowed={maxImagesAllowed}
         />
         <div className="my-14">
           <AppIndexDropzone
