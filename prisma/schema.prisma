@@ -12,8 +12,21 @@ model User {
   email             String             @unique
   imageEnhancements ImageEnhancement[]
   credits           Int                @default(5) // Everyone gets 5 credits for free
+  createdAt         DateTime           @default(now()) @map("created_at")
+  payments          Payment[]
 
   @@map("users")
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  description String
+  amount      Float
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int      @map("user_id")
+
+  @@map("payments")
 }
 
 model ImageEnhancementResult {

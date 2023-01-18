@@ -1,25 +1,14 @@
+import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import type { LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
-import { useEffect } from "react";
-import { toast, useToaster } from "react-hot-toast";
+import { format } from "date-fns";
+import { useMemo } from "react";
 import { BuyCreditsSlideOver } from "~/components/AccountCredits/BuyCreditsSlideOver";
-import { SuccessToast } from "~/components/SuccessToast";
 import { prisma } from "~/lib/prisma.server";
 import { requireUserId } from "~/lib/session.server";
 import { stripe } from "~/lib/stripe.server";
 import { intSchema } from "~/lib/utils.server";
-
-const payments = [
-  {
-    id: 1,
-    date: "1/1/2020",
-    datetime: "2020-01-01",
-    description: "Business Plan - Annual Billing",
-    amount: "$109.00",
-    href: "#",
-  },
-];
 
 export async function loader({ request }: LoaderArgs) {
   const userId = await requireUserId(request);
@@ -27,6 +16,14 @@ export async function loader({ request }: LoaderArgs) {
     where: { id: userId },
     select: {
       credits: true,
+      payments: {
+        select: {
+          id: true,
+          amount: true,
+          description: true,
+          createdAt: true,
+        },
+      },
     },
   });
 
@@ -72,17 +69,76 @@ export type CreditsLoader = typeof loader;
 
 export default function AccountCredits() {
   const { user } = useLoaderData<typeof loader>();
-  const [searchParams] = useSearchParams();
-  const boughtCredits =
-    searchParams.has("payment_success") && searchParams.has("payment_credits");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const creditsBought = useMemo(() => {
+    if (!searchParams.has("payment_success")) {
+      return 0;
+    }
 
-  // Show some info that credits were just added and also handle errors with the payment.
+    const creditsBought = searchParams.get("payment_credits");
+    const creditsBoughtNumber = Number(creditsBought);
+    if (Number.isNaN(creditsBoughtNumber)) {
+      return 0;
+    }
+
+    if (creditsBoughtNumber >= 10 && creditsBoughtNumber <= 1000000) {
+      return creditsBoughtNumber;
+    }
+
+    return 0;
+  }, [searchParams]);
+
+  const closeCreditsBoughtAlert = () => {
+    searchParams.delete("payment_success");
+    searchParams.delete("payment_credits");
+    setSearchParams(searchParams);
+  };
+
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
 
   return (
     <>
       <BuyCreditsSlideOver />
 
       <div className="space-y-6 sm:px-6 lg:col-span-9 lg:px-0">
+        {creditsBought ? (
+          <div className="rounded-md bg-green-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <CheckCircleIcon
+                  className="h-5 w-5 text-green-400"
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">
+                  Credits added
+                </h3>
+                <div className="mt-2 text-sm text-green-700">
+                  <p>
+                    Your payment was successful and {creditsBought} credits have
+                    been added to your account.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <div className="-mx-2 -my-1.5 flex">
+                    <button
+                      type="button"
+                      onClick={closeCreditsBoughtAlert}
+                      className="rounded-md bg-green-50 px-2 py-1.5 text-sm font-medium text-green-800 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <section aria-labelledby="credits-details-heading">
           <div className="shadow sm:overflow-hidden sm:rounded-md">
             <div className="bg-white shadow">
@@ -157,38 +213,24 @@ export default function AccountCredits() {
                           >
                             Amount
                           </th>
-                          {/*
-                                  `relative` is added here due to a weird bug in Safari that causes `sr-only` headings to introduce overflow on the body on mobile.
-                                */}
-                          <th
-                            scope="col"
-                            className="relative px-6 py-3 text-left text-sm font-medium text-gray-500"
-                          >
-                            <span className="sr-only">View receipt</span>
-                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
-                        {payments.map((payment) => (
+                        {user.payments.map((payment) => (
                           <tr key={payment.id}>
                             <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                              <time dateTime={payment.datetime}>
-                                {payment.date}
+                              <time>
+                                {format(
+                                  new Date(payment.createdAt),
+                                  "MMMM d, yyyy"
+                                )}
                               </time>
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                               {payment.description}
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                              {payment.amount}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                              <a
-                                href={payment.href}
-                                className="text-purple-600 hover:text-purple-900"
-                              >
-                                View receipt
-                              </a>
+                              {formatter.format(payment.amount / 100)}
                             </td>
                           </tr>
                         ))}

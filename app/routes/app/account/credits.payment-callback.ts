@@ -30,6 +30,12 @@ export async function loader({ request }: LoaderArgs) {
     where: { id: user.id },
     data: {
       credits: { increment: creditsBought },
+      payments: {
+        create: {
+          amount: paymentIntent.amount,
+          description: `${creditsBought} credits`,
+        },
+      },
     },
   });
 
