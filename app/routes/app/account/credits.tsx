@@ -1,7 +1,7 @@
-import { CheckCircleIcon } from "@heroicons/react/20/solid";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/20/solid";
 import type { LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
+import { useLoaderData, useSearchParams } from "@remix-run/react";
 import { format } from "date-fns";
 import { useMemo } from "react";
 import { BuyCreditsSlideOver } from "~/components/AccountCredits/BuyCreditsSlideOver";
@@ -70,6 +70,7 @@ export type CreditsLoader = typeof loader;
 export default function AccountCredits() {
   const { user } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const paymentError = searchParams.has("payment_error");
   const creditsBought = useMemo(() => {
     if (!searchParams.has("payment_success")) {
       return 0;
@@ -91,6 +92,11 @@ export default function AccountCredits() {
   const closeCreditsBoughtAlert = () => {
     searchParams.delete("payment_success");
     searchParams.delete("payment_credits");
+    setSearchParams(searchParams);
+  };
+
+  const closePaymentErrorAlert = () => {
+    searchParams.delete("payment_error");
     setSearchParams(searchParams);
   };
 
@@ -137,6 +143,40 @@ export default function AccountCredits() {
               </div>
             </div>
           </div>
+        ) : paymentError ? (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <XCircleIcon
+                  className="h-5 w-5 text-red-400"
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Payment error
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p className="text-sm">
+                    Something went wrong with your payment and we couldn't add
+                    the credits to your account.
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <div className="-mx-2 -my-1.5 flex">
+                    <button
+                      type="button"
+                      onClick={closePaymentErrorAlert}
+                      className="rounded-md bg-red-50 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : null}
 
         <section aria-labelledby="credits-details-heading">
@@ -163,12 +203,19 @@ export default function AccountCredits() {
                         {user.credits === 1 ? "credit" : "credits"}
                       </span>
                       <span className="ml-4 flex-shrink-0">
-                        <Link
-                          to="?show_buy_credits_modal=yes"
+                        <button
+                          onClick={() => {
+                            searchParams.delete("show_buy_credits_modal");
+                            searchParams.append(
+                              "show_buy_credits_modal",
+                              "true"
+                            );
+                            setSearchParams(searchParams);
+                          }}
                           className="rounded-md bg-white font-medium text-purple-600 hover:text-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                         >
                           Buy more
-                        </Link>
+                        </button>
                       </span>
                     </dd>
                   </div>
