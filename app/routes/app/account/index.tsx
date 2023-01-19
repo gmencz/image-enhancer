@@ -54,7 +54,9 @@ export default function AccountIndex() {
                 <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Created</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                    {format(new Date(user.createdAt), "MMMM d, yyyy")}
+                    <time>
+                      {format(new Date(user.createdAt), "MMMM d, yyyy")}
+                    </time>
                   </dd>
                 </div>
                 <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">

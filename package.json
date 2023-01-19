@@ -5,8 +5,9 @@
     "build": "npm run build:css && remix build",
     "build:css": "tailwindcss -m -i ./styles/app.css -o app/styles/app.css",
     "deploy": "fly deploy --remote-only",
-    "dev": "concurrently \"npm run dev:css\" \"remix dev\"",
+    "dev": "concurrently \"npm run dev:css\" \"remix dev\" \"npm run dev:stripe\"",
     "dev:css": "tailwindcss -w -i ./styles/app.css -o app/styles/app.css",
+    "dev:stripe": "stripe listen --forward-to localhost:3000/webhooks/stripe",
     "start": "remix-serve build",
     "typecheck": "tsc -b"
   },

@@ -1,7 +1,13 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { Form, Link, useLoaderData, useSearchParams } from "@remix-run/react";
-import { Fragment, useRef, useState } from "react";
+import {
+  Form,
+  Link,
+  useLoaderData,
+  useSearchParams,
+  useTransition,
+} from "@remix-run/react";
+import { Fragment, useEffect, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import type { CreditsLoader } from "~/routes/app/account/credits";
 import {
@@ -9,12 +15,14 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { getStripe } from "~/lib/stripe.client";
+import { elementsOptions, getStripe } from "~/lib/stripe.client";
 import { ArrowLongLeftIcon } from "@heroicons/react/24/solid";
 import { Spinner } from "../Spinner";
+import { toast } from "react-hot-toast";
+import { ErrorToast } from "../ErrorToast";
 
 function BuyCreditsCheckoutForm() {
-  const { paymentIntent } = useLoaderData<CreditsLoader>();
+  const { paymentIntent, user } = useLoaderData<CreditsLoader>();
   const [searchParams] = useSearchParams();
   const amount = searchParams.get("amount");
   const formatter = new Intl.NumberFormat("en-US", {
@@ -24,25 +32,42 @@ function BuyCreditsCheckoutForm() {
 
   const elements = useElements();
   const stripe = useStripe();
-  const [processing, setProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!!elements && !!stripe) {
-      setProcessing(true);
+      setIsLoading(true);
       try {
-        await stripe.confirmPayment({
+        const { error } = await stripe.confirmPayment({
           elements,
           confirmParams: {
-            return_url:
-              "http://localhost:3000/app/account/credits/payment-callback",
+            return_url: `${window.location.origin}/app/account/credits/payment-callback`,
+            receipt_email: user.email,
           },
         });
+
+        if (error.type !== "validation_error" && error.type !== "card_error") {
+          toast.custom((t) => (
+            <ErrorToast
+              t={t}
+              title="Oops!"
+              description={error.message || "An unexpected error occurred."}
+            />
+          ));
+        }
       } catch (error) {
         console.error(error);
+        toast.custom((t) => (
+          <ErrorToast
+            t={t}
+            title="Oops!"
+            description="An unexpected error occurred."
+          />
+        ));
       } finally {
-        setProcessing(false);
+        setIsLoading(false);
       }
     }
   };
@@ -50,14 +75,14 @@ function BuyCreditsCheckoutForm() {
   return (
     <Form onSubmit={handleSubmit}>
       <Link
-        className="flex items-center gap-3 mb-6 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-md"
+        className="flex items-center gap-3 mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-md"
         to={`/app/account/credits?show_buy_credits_modal=yes&amount=${searchParams.get(
           "amount"
         )}`}
       >
         <ArrowLongLeftIcon className="w-6 h-6 text-gray-900" />
         <span className="text-sm text-gray-900 font-medium">
-          Return to amount selection
+          Return to credits selection
         </span>
       </Link>
 
@@ -65,10 +90,10 @@ function BuyCreditsCheckoutForm() {
 
       <button
         type="submit"
-        disabled={processing}
-        className="mt-8 flex flex-1 w-full disabled:bg-purple-300 justify-center rounded-md border border-transparent bg-purple-600 px-6 py-3 sm:text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        disabled={isLoading}
+        className="mt-6 flex flex-1 w-full text-sm disabled:bg-purple-300 justify-center rounded-md border border-transparent bg-purple-600 px-6 py-3 font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
       >
-        {processing ? (
+        {isLoading ? (
           <>
             <Spinner
               className="-ml-1 mr-3 h-5 w-5 text-white"
@@ -93,11 +118,14 @@ function BuyCreditsCheckout() {
   const stripePromise = getStripe();
 
   return (
-    <div className="relative mt-6 flex-1 px-4 sm:px-6">
+    <div className="py-6 px-4 sm:px-6">
       {paymentIntent?.client_secret ? (
         <Elements
           stripe={stripePromise}
-          options={{ clientSecret: paymentIntent.client_secret }}
+          options={{
+            clientSecret: paymentIntent.client_secret,
+            ...elementsOptions,
+          }}
         >
           <BuyCreditsCheckoutForm />
         </Elements>
@@ -106,12 +134,9 @@ function BuyCreditsCheckout() {
   );
 }
 
-interface BuyCreditsFormProps {
-  amountInputRef: React.RefObject<HTMLInputElement>;
-}
-
-function BuyCreditsForm({ amountInputRef }: BuyCreditsFormProps) {
+function BuyCreditsForm() {
   const [searchParams] = useSearchParams();
+  const isSubmitting = useTransition().state === "submitting";
   const [formData, setFormData] = useState(() => {
     const amountParam = Number(searchParams.get("amount"));
     const isValidParam =
@@ -137,78 +162,84 @@ function BuyCreditsForm({ amountInputRef }: BuyCreditsFormProps) {
   const total = formData.amount * 0.1;
 
   return (
-    <Form className="relative mt-6 flex-1 px-4 sm:px-6" method="get">
-      <div>
-        <label
-          htmlFor="amount"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Amount
-        </label>
+    <div className="px-4 sm:px-6 py-6">
+      <Form method="get">
+        <div>
+          <label
+            htmlFor="amount"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Amount
+          </label>
 
-        <input type="hidden" name="show_buy_credits_modal" value="yes" />
-        <input type="hidden" name="checkout" value="yes" />
+          <input type="hidden" name="show_buy_credits_modal" value="yes" />
+          <input type="hidden" name="checkout" value="yes" />
 
-        <div className="mt-1">
-          <input
-            type="number"
-            name="amount"
-            id="amount"
-            ref={amountInputRef}
-            value={formData.amount}
-            onChange={(e) => onAmountChange(e)}
-            required
-            min={10}
-            max={1000000}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
-            aria-describedby="amount-description"
-          />
+          <div className="mt-1">
+            <input
+              type="number"
+              name="amount"
+              id="amount"
+              value={formData.amount}
+              onChange={(e) => onAmountChange(e)}
+              required
+              min={10}
+              max={1000000}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+            />
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            The amount of credits you want to buy. 1 credit allows you to
+            enhance 1 image. Minimum 10.
+          </p>
         </div>
-        <p className="mt-2 text-sm text-gray-500" id="amount-description">
-          The amount of credits you want to buy. 1 credit allows you to enhance
-          1 image. Minimum 10.
-        </p>
-      </div>
 
-      <div className="border-t border-gray-200 mt-6 pt-4">
-        <div className="flex justify-between sm:text-sm font-medium text-gray-900">
-          <p>Total</p>
-          <p>{formatter.format(total)}</p>
+        <div className="border-t border-gray-200 mt-6 pt-4">
+          <div className="flex justify-between text-sm font-medium text-gray-900">
+            <p>Total</p>
+            <p>{formatter.format(total)}</p>
+          </div>
         </div>
-      </div>
 
-      <div className="mt-6 flex">
-        <button
-          type="submit"
-          className="flex flex-1 w-full disabled:bg-purple-300 justify-center rounded-md border border-transparent bg-purple-600 px-6 py-3 sm:text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-          disabled={!canSubmit}
-        >
-          Continue
-        </button>
-      </div>
-    </Form>
+        <div className="mt-6 flex">
+          <button
+            type="submit"
+            className="flex flex-1 w-full disabled:bg-purple-300 justify-center rounded-md border border-transparent bg-purple-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            disabled={!canSubmit || isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Spinner
+                  className="-ml-1 mr-3 h-5 w-5 text-white"
+                  aria-hidden="true"
+                />
+                Redirecting...
+              </>
+            ) : (
+              <>Checkout</>
+            )}
+          </button>
+        </div>
+      </Form>
+    </div>
   );
 }
 
 export function BuyCreditsSlideOver() {
   const [searchParams, setSearchParams] = useSearchParams();
   const show = searchParams.has("show_buy_credits_modal");
-  const amountInputRef = useRef<HTMLInputElement>(null);
   const { paymentIntent } = useLoaderData<CreditsLoader>();
 
   const close = () => {
     searchParams.delete("show_buy_credits_modal");
+    searchParams.delete("checkout");
+    searchParams.delete("amount");
     setSearchParams(searchParams);
   };
 
   return (
     <Transition.Root appear show={show} as={Fragment}>
-      <Dialog
-        as="div"
-        className="relative z-10"
-        onClose={close}
-        initialFocus={amountInputRef}
-      >
+      <Dialog as="div" className="relative z-10" onClose={close}>
         <Transition.Child
           as={Fragment}
           enter="ease-in-out duration-500"
@@ -254,7 +285,7 @@ export function BuyCreditsSlideOver() {
                       </button>
                     </div>
                   </Transition.Child>
-                  <div className="flex h-full flex-col overflow-y-scroll bg-white pb-6 shadow-xl">
+                  <div className="h-full overflow-y-auto bg-white pb-6 shadow-xl">
                     <div className="bg-purple-700 py-6 px-4 sm:px-6">
                       <Dialog.Title className="text-lg font-medium text-white">
                         Buy credits
@@ -270,7 +301,7 @@ export function BuyCreditsSlideOver() {
                     {paymentIntent ? (
                       <BuyCreditsCheckout />
                     ) : (
-                      <BuyCreditsForm amountInputRef={amountInputRef} />
+                      <BuyCreditsForm />
                     )}
                   </div>
                 </Dialog.Panel>

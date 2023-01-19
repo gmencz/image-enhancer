@@ -1,45 +1,74 @@
 import type { LoaderArgs } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
 import { prisma } from "~/lib/prisma.server";
-import { requireUserId } from "~/lib/session.server";
 import { stripe } from "~/lib/stripe.server";
+import { getCreditsFromAmount } from "~/lib/utils.server";
 
 export async function loader({ request }: LoaderArgs) {
-  const userId = await requireUserId(request);
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-  if (!user) {
-    throw redirect("/sign-out");
-  }
-
   const url = new URL(request.url);
   const paymentIntentId = url.searchParams.get("payment_intent");
   if (!paymentIntentId) {
-    return redirect("/app/account/credits?payment_error=true");
+    return redirect("/app/account/credits?payment_failed=true");
   }
 
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
   if (!paymentIntent) {
-    return redirect("/app/account/credits?payment_error=true");
+    return redirect("/app/account/credits?payment_failed=true");
   }
 
-  const creditsBought = Math.round(paymentIntent.amount / 100 / 0.1);
+  const creditsBought = getCreditsFromAmount(paymentIntent.amount);
+  const successfulPayment = await prisma.payment.findFirst({
+    where: {
+      AND: [{ paymentIntentId: paymentIntent.id }, { status: "succeeded" }],
+    },
+  });
+
+  // If we have already stored the successful payment don't continue
+  if (successfulPayment) {
+    return redirect(
+      `/app/account/credits?payment_succeeded=true&payment_credits=${creditsBought}`
+    );
+  }
+
   await prisma.user.update({
-    where: { id: user.id },
+    where: { id: Number(paymentIntent.metadata.userId) },
     data: {
-      credits: { increment: creditsBought },
+      credits:
+        paymentIntent.status === "succeeded"
+          ? { increment: creditsBought }
+          : undefined,
       payments: {
-        create: {
-          amount: paymentIntent.amount,
-          description: `${creditsBought} credits`,
+        upsert: {
+          where: {
+            paymentIntentId: paymentIntent.id,
+          },
+          create: {
+            amount: paymentIntent.amount,
+            description: paymentIntent.description!,
+            paymentIntentId: paymentIntent.id,
+            status: paymentIntent.status,
+          },
+          update: {
+            status: paymentIntent.status,
+          },
         },
       },
     },
   });
 
-  return redirect(
-    `/app/account/credits?payment_success=true&payment_credits=${creditsBought}`
-  );
+  switch (paymentIntent.status) {
+    case "succeeded": {
+      return redirect(
+        `/app/account/credits?payment_succeeded=true&payment_credits=${creditsBought}`
+      );
+    }
+
+    case "processing": {
+      return redirect("/app/account/credits?payment_processing=true");
+    }
+
+    default: {
+      return redirect("/app/account/credits?payment_failed=true");
+    }
+  }
 }

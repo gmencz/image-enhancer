@@ -210,10 +210,12 @@ export function ImageSlideOver() {
                               <div className="flex justify-between py-3 text-sm font-medium">
                                 <dt className="text-gray-500">Created</dt>
                                 <dd className="text-gray-900">
-                                  {format(
-                                    new Date(slideOverImage.createdAt),
-                                    "MMMM d, yyyy"
-                                  )}
+                                  <time>
+                                    {format(
+                                      new Date(slideOverImage.createdAt),
+                                      "MMMM d, yyyy"
+                                    )}
+                                  </time>
                                 </dd>
                               </div>
                               <div className="flex justify-between py-3 text-sm font-medium">

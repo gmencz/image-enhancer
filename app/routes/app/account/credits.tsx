@@ -1,4 +1,8 @@
-import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/20/solid";
+import {
+  CheckCircleIcon,
+  InformationCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/20/solid";
 import type { LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useSearchParams } from "@remix-run/react";
@@ -15,6 +19,7 @@ export async function loader({ request }: LoaderArgs) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
+      email: true,
       credits: true,
       payments: {
         select: {
@@ -22,6 +27,10 @@ export async function loader({ request }: LoaderArgs) {
           amount: true,
           description: true,
           createdAt: true,
+          status: true,
+        },
+        orderBy: {
+          createdAt: "desc",
         },
       },
     },
@@ -46,6 +55,11 @@ export async function loader({ request }: LoaderArgs) {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: cents,
         currency: "usd",
+        description: `${amountNumber} credits`,
+        metadata: {
+          userId,
+        },
+        receipt_email: user.email,
         automatic_payment_methods: {
           enabled: true,
         },
@@ -70,9 +84,10 @@ export type CreditsLoader = typeof loader;
 export default function AccountCredits() {
   const { user } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const paymentError = searchParams.has("payment_error");
+  const paymentError = searchParams.has("payment_failed");
+  const paymentProcessing = searchParams.has("payment_processing");
   const creditsBought = useMemo(() => {
-    if (!searchParams.has("payment_success")) {
+    if (!searchParams.has("payment_succeeded")) {
       return 0;
     }
 
@@ -90,13 +105,18 @@ export default function AccountCredits() {
   }, [searchParams]);
 
   const closeCreditsBoughtAlert = () => {
-    searchParams.delete("payment_success");
+    searchParams.delete("payment_succeeded");
     searchParams.delete("payment_credits");
     setSearchParams(searchParams);
   };
 
   const closePaymentErrorAlert = () => {
-    searchParams.delete("payment_error");
+    searchParams.delete("payment_failed");
+    setSearchParams(searchParams);
+  };
+
+  const closePaymentProcessingAlert = () => {
+    searchParams.delete("payment_processing");
     setSearchParams(searchParams);
   };
 
@@ -104,6 +124,19 @@ export default function AccountCredits() {
     style: "currency",
     currency: "USD",
   });
+
+  const paymentStatusTexts = {
+    succeeded: "Succeeded",
+    processing: "Processing",
+    canceled: "Canceled",
+  };
+
+  const getPaymentStatusText = (paymentStatus: string) => {
+    return (
+      paymentStatusTexts[paymentStatus as keyof typeof paymentStatusTexts] ||
+      "Failed"
+    );
+  };
 
   return (
     <>
@@ -177,6 +210,35 @@ export default function AccountCredits() {
               </div>
             </div>
           </div>
+        ) : paymentProcessing ? (
+          <div className="rounded-md bg-blue-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <InformationCircleIcon
+                  className="h-5 w-5 text-blue-400"
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="ml-3 flex-1 flex-col">
+                <p className="text-sm text-blue-700">
+                  Your payment is being processed, if successful, the credits
+                  will be added to your account automatically.
+                </p>
+
+                <div className="mt-4">
+                  <div className="-mx-2 -my-1.5 flex">
+                    <button
+                      type="button"
+                      onClick={closePaymentProcessingAlert}
+                      className="rounded-md bg-blue-50 px-2 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 focus:ring-offset-blue-50"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : null}
 
         <section aria-labelledby="credits-details-heading">
@@ -187,8 +249,7 @@ export default function AccountCredits() {
                   Credits
                 </h3>
                 <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  Used for enhancing images, each image you enhance requires 1
-                  credit.
+                  Used for enhancing images, 1 credit per image.
                 </p>
               </div>
               <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
@@ -260,6 +321,12 @@ export default function AccountCredits() {
                           >
                             Amount
                           </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-sm font-semibold text-gray-900"
+                          >
+                            Payment
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
@@ -269,7 +336,7 @@ export default function AccountCredits() {
                               <time>
                                 {format(
                                   new Date(payment.createdAt),
-                                  "MMMM d, yyyy"
+                                  "M'/'d'/'yyyy"
                                 )}
                               </time>
                             </td>
@@ -278,6 +345,9 @@ export default function AccountCredits() {
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                               {formatter.format(payment.amount / 100)}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                              {getPaymentStatusText(payment.status)}
                             </td>
                           </tr>
                         ))}

@@ -19,12 +19,14 @@ model User {
 }
 
 model Payment {
-  id          Int      @id @default(autoincrement())
-  description String
-  amount      Float
-  createdAt   DateTime @default(now()) @map("created_at")
-  user        User     @relation(fields: [userId], references: [id])
-  userId      Int      @map("user_id")
+  id              Int      @id @default(autoincrement())
+  description     String
+  amount          Float
+  createdAt       DateTime @default(now()) @map("created_at")
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int      @map("user_id")
+  paymentIntentId String   @unique @map("payment_intent_id")
+  status          String
 
   @@map("payments")
 }
