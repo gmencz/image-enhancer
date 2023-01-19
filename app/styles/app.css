@@ -996,6 +996,10 @@ select {
   height: 3rem;
 }
 
+.h-7 {
+  height: 1.75rem;
+}
+
 .max-h-60 {
   max-height: 15rem;
 }
@@ -1046,6 +1050,10 @@ select {
 
 .w-\[1440px\] {
   width: 1440px;
+}
+
+.w-7 {
+  width: 1.75rem;
 }
 
 .min-w-full {
@@ -1903,6 +1911,16 @@ select {
 .text-orange-600 {
   --tw-text-opacity: 1;
   color: rgb(234 88 12 / var(--tw-text-opacity));
+}
+
+.text-purple-800 {
+  --tw-text-opacity: 1;
+  color: rgb(107 33 168 / var(--tw-text-opacity));
+}
+
+.text-purple-900 {
+  --tw-text-opacity: 1;
+  color: rgb(88 28 135 / var(--tw-text-opacity));
 }
 
 .underline {

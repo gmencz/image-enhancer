@@ -1,29 +1,9 @@
-import type { LoaderArgs } from "@remix-run/node";
-import { redirect } from "@remix-run/node";
-import { json } from "@remix-run/node";
-import { requireUserId } from "~/lib/session.server";
 import { Fragment } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
-import { prisma } from "~/lib/prisma.server";
-
-export async function loader({ request }: LoaderArgs) {
-  const userId = await requireUserId(request);
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      email: true,
-    },
-  });
-
-  if (!user) {
-    throw redirect("/sign-out");
-  }
-
-  return json({ user });
-}
+import { NavLink, Outlet } from "@remix-run/react";
+import { UserCircleIcon } from "@heroicons/react/24/outline";
 
 const navigation = [
   { name: "Enhancer", href: "/app", end: true },
@@ -36,8 +16,6 @@ const userNavigation = [
 ];
 
 export default function App() {
-  const { user } = useLoaderData<typeof loader>();
-
   return (
     <>
       <div className="min-h-full flex flex-col">
@@ -80,7 +58,7 @@ export default function App() {
                         <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
                           <span className="sr-only">Open user menu</span>
                           <div className="rounded-full h-10 w-10 bg-purple-100 flex items-center justify-center font-bold">
-                            {user.email.substring(0, 2)}
+                            <UserCircleIcon className="h-7 w-7 text-purple-900" />
                           </div>
                         </Menu.Button>
                       </div>
