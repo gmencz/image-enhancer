@@ -30,9 +30,13 @@ export async function loader({ request }: LoaderArgs) {
     );
   }
 
-  await prisma.user.update({
+  const user = await prisma.user.update({
     where: { id: Number(paymentIntent.metadata.userId) },
     data: {
+      stripeCustomerId:
+        paymentIntent.status === "succeeded"
+          ? paymentIntent.customer?.toString()
+          : undefined,
       credits:
         paymentIntent.status === "succeeded"
           ? { increment: creditsBought }
@@ -54,10 +58,28 @@ export async function loader({ request }: LoaderArgs) {
         },
       },
     },
+    select: {
+      stripeCustomerId: true,
+    },
   });
 
   switch (paymentIntent.status) {
     case "succeeded": {
+      if (user.stripeCustomerId) {
+        const invoice = await stripe.invoices.create({
+          customer: user.stripeCustomerId,
+          currency: paymentIntent.currency,
+        });
+
+        await stripe.invoiceItems.create({
+          customer: user.stripeCustomerId,
+          amount: paymentIntent.amount,
+          description: paymentIntent.description || undefined,
+          currency: paymentIntent.currency,
+          invoice: invoice.id,
+        });
+      }
+
       return redirect(
         `/app/account/credits?payment_succeeded=true&payment_credits=${creditsBought}`
       );

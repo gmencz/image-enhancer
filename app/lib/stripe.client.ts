@@ -27,6 +27,9 @@ const elementsOptions: Partial<StripeElementsOptions> = {
         "Inter, ui-sans-serif,system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
     },
     rules: {
+      ".Error": {
+        fontSize: ".875rem",
+      },
       ".Label": {
         color: "rgb(55, 65, 81)",
         fontWeight: "500",

@@ -58,6 +58,10 @@ export async function action({ request }: ActionArgs) {
       await prisma.user.update({
         where: { id: userId },
         data: {
+          stripeCustomerId:
+            paymentIntent.status === "succeeded"
+              ? paymentIntent.customer?.toString()
+              : undefined,
           credits:
             paymentIntent.status === "succeeded"
               ? { increment: creditsBought }
@@ -79,6 +83,11 @@ export async function action({ request }: ActionArgs) {
             },
           },
         },
+      });
+
+      await stripe.invoices.create({
+        customer: paymentIntent.customer?.toString(),
+        description: paymentIntent.description!,
       });
     }
   }

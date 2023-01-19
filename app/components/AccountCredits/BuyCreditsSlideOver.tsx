@@ -7,7 +7,7 @@ import {
   useSearchParams,
   useTransition,
 } from "@remix-run/react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import type { CreditsLoader } from "~/routes/app/account/credits";
 import {
@@ -136,7 +136,9 @@ function BuyCreditsCheckout() {
 
 function BuyCreditsForm() {
   const [searchParams] = useSearchParams();
-  const isSubmitting = useTransition().state === "submitting";
+  const transition = useTransition();
+  const isLoading =
+    transition.state === "submitting" || transition.state === "loading";
   const [formData, setFormData] = useState(() => {
     const amountParam = Number(searchParams.get("amount"));
     const isValidParam =
@@ -205,9 +207,9 @@ function BuyCreditsForm() {
           <button
             type="submit"
             className="flex flex-1 w-full disabled:bg-purple-300 justify-center rounded-md border border-transparent bg-purple-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-            disabled={!canSubmit || isSubmitting}
+            disabled={!canSubmit || isLoading}
           >
-            {isSubmitting ? (
+            {isLoading ? (
               <>
                 <Spinner
                   className="-ml-1 mr-3 h-5 w-5 text-white"
@@ -216,7 +218,7 @@ function BuyCreditsForm() {
                 Redirecting...
               </>
             ) : (
-              <>Checkout</>
+              <>Continue</>
             )}
           </button>
         </div>

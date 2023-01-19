@@ -19,6 +19,7 @@ export async function loader({ request }: LoaderArgs) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
+      stripeCustomerId: true,
       email: true,
       credits: true,
       payments: {
@@ -52,37 +53,101 @@ export async function loader({ request }: LoaderArgs) {
       const amountNumber = intSchema.parse(amount);
       const total = amountNumber * 0.1;
       const cents = Math.round(total * 100);
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: cents,
-        currency: "usd",
-        description: `${amountNumber} credits`,
-        metadata: {
-          userId,
-        },
-        receipt_email: user.email,
-        automatic_payment_methods: {
-          enabled: true,
-        },
-      });
 
-      return json({ user, paymentIntent });
+      if (user.stripeCustomerId) {
+        const paymentMethods = await stripe.paymentMethods.list({
+          customer: user.stripeCustomerId,
+          type: "card",
+        });
+
+        if (paymentMethods.data.length) {
+          const paymentIntent = await stripe.paymentIntents.create({
+            customer: user.stripeCustomerId,
+            amount: cents,
+            currency: "usd",
+            description: `${amountNumber} credits`,
+            metadata: {
+              userId,
+            },
+            receipt_email: user.email,
+            payment_method: paymentMethods.data[0].id,
+            off_session: true,
+            confirm: true,
+          });
+
+          return redirect(
+            `/app/account/credits/payment-callback?payment_intent=${paymentIntent.id}`
+          );
+        }
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          customer: user.stripeCustomerId,
+          setup_future_usage: "off_session",
+          amount: cents,
+          currency: "usd",
+          description: `${amountNumber} credits`,
+          metadata: {
+            userId,
+          },
+          receipt_email: user.email,
+          automatic_payment_methods: {
+            enabled: true,
+          },
+        });
+
+        return json({
+          user,
+          paymentIntent,
+          customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+        });
+      } else {
+        const customer = await stripe.customers.create({
+          email: user.email,
+        });
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          customer: customer.id,
+          setup_future_usage: "off_session",
+          amount: cents,
+          currency: "usd",
+          description: `${amountNumber} credits`,
+          metadata: {
+            userId,
+          },
+          receipt_email: user.email,
+          automatic_payment_methods: {
+            enabled: true,
+          },
+        });
+
+        return json({
+          user,
+          paymentIntent,
+          customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+        });
+      }
     } catch (error) {
       console.error(error);
       return json({
         user,
         paymentIntent: null,
         error: "Error creating payment intent",
+        customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
       });
     }
   }
 
-  return json({ user, paymentIntent: null });
+  return json({
+    user,
+    paymentIntent: null,
+    customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+  });
 }
 
 export type CreditsLoader = typeof loader;
 
 export default function AccountCredits() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, customerPortalLink } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const paymentError = searchParams.has("payment_failed");
   const paymentProcessing = searchParams.has("payment_processing");
@@ -327,6 +392,15 @@ export default function AccountCredits() {
                           >
                             Payment
                           </th>
+                          {/*
+                                  `relative` is added here due to a weird bug in Safari that causes `sr-only` headings to introduce overflow on the body on mobile.
+                                */}
+                          <th
+                            scope="col"
+                            className="relative px-6 py-3 text-left text-sm font-medium text-gray-500"
+                          >
+                            <span className="sr-only">View details</span>
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
@@ -348,6 +422,14 @@ export default function AccountCredits() {
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                               {getPaymentStatusText(payment.status)}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                              <a
+                                href={customerPortalLink}
+                                className="text-purple-600 hover:text-purple-900"
+                              >
+                                View details
+                              </a>
                             </td>
                           </tr>
                         ))}

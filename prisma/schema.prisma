@@ -14,6 +14,7 @@ model User {
   credits           Int                @default(5) // Everyone gets 5 credits for free
   createdAt         DateTime           @default(now()) @map("created_at")
   payments          Payment[]
+  stripeCustomerId  String?            @map("stripe_customer_id")
 
   @@map("users")
 }
