@@ -8,6 +8,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useSearchParams } from "@remix-run/react";
 import { format } from "date-fns";
 import { useMemo } from "react";
+import invariant from "tiny-invariant";
 import { BuyCreditsSlideOver } from "~/components/AccountCredits/BuyCreditsSlideOver";
 import { prisma } from "~/lib/prisma.server";
 import { requireUserId } from "~/lib/session.server";
@@ -15,6 +16,12 @@ import { stripe } from "~/lib/stripe.server";
 import { intSchema } from "~/lib/utils.server";
 
 export async function loader({ request }: LoaderArgs) {
+  const { STRIPE_CUSTOMER_PORTAL_LINK } = process.env;
+  invariant(
+    typeof STRIPE_CUSTOMER_PORTAL_LINK === "string",
+    "STRIPE_CUSTOMER_PORTAL_LINK env var not set"
+  );
+
   const userId = await requireUserId(request);
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -98,7 +105,7 @@ export async function loader({ request }: LoaderArgs) {
         return json({
           user,
           paymentIntent,
-          customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+          customerPortalLink: STRIPE_CUSTOMER_PORTAL_LINK,
         });
       } else {
         const customer = await stripe.customers.create({
@@ -123,7 +130,7 @@ export async function loader({ request }: LoaderArgs) {
         return json({
           user,
           paymentIntent,
-          customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+          customerPortalLink: STRIPE_CUSTOMER_PORTAL_LINK,
         });
       }
     } catch (error) {
@@ -132,7 +139,7 @@ export async function loader({ request }: LoaderArgs) {
         user,
         paymentIntent: null,
         error: "Error creating payment intent",
-        customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+        customerPortalLink: STRIPE_CUSTOMER_PORTAL_LINK,
       });
     }
   }
@@ -140,7 +147,7 @@ export async function loader({ request }: LoaderArgs) {
   return json({
     user,
     paymentIntent: null,
-    customerPortalLink: process.env.STRIPE_CUSTOMER_PORTAL_LINK,
+    customerPortalLink: STRIPE_CUSTOMER_PORTAL_LINK,
   });
 }
 
@@ -392,15 +399,6 @@ export default function AccountCredits() {
                           >
                             Payment
                           </th>
-                          {/*
-                                  `relative` is added here due to a weird bug in Safari that causes `sr-only` headings to introduce overflow on the body on mobile.
-                                */}
-                          <th
-                            scope="col"
-                            className="relative px-6 py-3 text-left text-sm font-medium text-gray-500"
-                          >
-                            <span className="sr-only">View details</span>
-                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
@@ -423,14 +421,6 @@ export default function AccountCredits() {
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                               {getPaymentStatusText(payment.status)}
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                              <a
-                                href={customerPortalLink}
-                                className="text-purple-600 hover:text-purple-900"
-                              >
-                                View details
-                              </a>
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -438,6 +428,14 @@ export default function AccountCredits() {
                   </div>
                 </div>
               </div>
+            </div>
+            <div className="py-5 px-6 border-t border-t-gray-200">
+              <a
+                href={customerPortalLink}
+                className="inline-flex items-center rounded-md border border-transparent bg-purple-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              >
+                Manage payment
+              </a>
             </div>
           </div>
         </section>
